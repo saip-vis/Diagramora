@@ -1,0 +1,2630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Voice to Flowchart</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.5.0/dist/svg2pdf.umd.min.js"></script>
+<style>
+  :root {
+    --dark-blue: #0B2545;
+    --light-blue: #8DA9C4;
+    --page-bg: #EAF1F8;
+    --white: #FFFFFF;
+    --black: #13293D;
+    --accent: #285F8F;
+    --muted: #60758A;
+    --border: #C9D5E1;
+    --surface-soft: #F6F9FC;
+    --radius-sm: 9px;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+    --shadow-sm: 0 4px 16px rgba(11,37,69,.07);
+    --shadow-md: 0 16px 45px rgba(11,37,69,.12);
+  }
+  * { box-sizing: border-box; }
+  :focus-visible { outline: 3px solid rgba(40,95,143,.35); outline-offset: 2px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    color: var(--black);
+    background: var(--page-bg);
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 68px;
+    padding: 12px clamp(20px, 3vw, 46px);
+    background: var(--dark-blue);
+    color: var(--white);
+    box-shadow: 0 2px 12px rgba(4,20,38,.16);
+  }
+  header .brand { display:flex; align-items:center; gap:10px; font-weight:750; font-size:1rem; letter-spacing:-.01em; }
+  .brand-mark { display:grid; place-items:center; width:32px; height:32px; border-radius:9px; background:#fff; color:var(--dark-blue); font-size:.88rem; }
+  nav { display: flex; align-items:center; gap: 6px; }
+  nav button {
+    background: none;
+    border: none;
+    color: var(--light-blue);
+    font-size: 0.88rem;
+    font-weight: 650;
+    cursor: pointer;
+    padding: 9px 11px;
+    margin: 0;
+    border-radius: 8px;
+    transition: color .15s ease, background .15s ease;
+  }
+  nav button:hover { color:#fff; background:rgba(255,255,255,.08); }
+  nav button.active { color: var(--white); background:rgba(255,255,255,.13); }
+  #loginNavBtn { margin-left:5px; border:1px solid rgba(255,255,255,.24); }
+  #loginNavBtn.logout-action:hover,
+  #loginNavBtn.logout-action:focus-visible { background:#FEE2E2; border-color:#FCA5A5; color:#991B1B; }
+
+  main { max-width: 1540px; min-height: calc(100vh - 68px); margin: 0 auto; padding: 40px 28px 72px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ---------- Public landing page ---------- */
+  .landing-hero {
+    min-height: 68vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(420px, .95fr);
+    align-items: center;
+    gap: clamp(38px, 5vw, 78px);
+    padding: 64px 0 72px;
+  }
+  .landing-copy h1 { margin: 0; max-width: 885px; text-align: left; font-size: clamp(3.3rem, 6.6vw, 6.32rem); line-height: 1.02; letter-spacing: -.055em; }
+  .landing-copy p { max-width: 800px; margin: 31px 0 0; text-align: left; font-size: 1.51rem; line-height: 1.65; color: #52687d; }
+  .landing-eyebrow { margin-bottom: 25px; color: #285f8f; font-size: 1.06rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .landing-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+  .landing-actions .action-btn { min-width: 205px; min-height: 56px; font-size: 1.17rem; }
+  .landing-note { margin-top: 14px; color: #718096; font-size: .82rem; }
+  .flow-demo { position: relative; min-height: 646px; padding: 49px; border: 1px solid #b9c7d8; border-radius: 29px; background: rgba(255,255,255,.76); box-shadow: 0 24px 70px rgba(11,37,69,.14); overflow: hidden; }
+  .flow-demo::before { content: "LIVE WORKFLOW"; display: block; margin-bottom: 26px; color: #718096; font-size: .7rem; font-weight: 800; letter-spacing: .13em; }
+  .demo-node { position: relative; z-index: 1; width: min(316px, 78%); margin: 0 auto; padding: 18px 25px; border: 2px solid var(--dark-blue); border-radius: 12px; background: #fff; color: var(--dark-blue); text-align: center; font-size: 1.17rem; font-weight: 700; box-shadow: 0 5px 16px rgba(11,37,69,.08); }
+  .demo-node.start, .demo-node.end { width: 143px; border-radius: 999px; background: var(--dark-blue); color: #fff; }
+  .demo-node.decision { width: 187px; border-radius: 23px; transform: rotate(3deg); }
+  .demo-node.decision span { display: block; transform: rotate(-3deg); }
+  .demo-arrow { height: 39px; width: 2px; margin: 0 auto; background: var(--dark-blue); position: relative; }
+  .demo-arrow::after { content: ""; position: absolute; bottom: -1px; left: -4px; border: 5px solid transparent; border-top-color: var(--dark-blue); }
+  .demo-branch-connector, .demo-merge-connector { position:relative; height:38px; margin:0 13%; }
+  .demo-branch-connector::before, .demo-merge-connector::before { content:""; position:absolute; left:25%; right:25%; height:2px; background:var(--dark-blue); }
+  .demo-branch-connector::after, .demo-merge-connector::after { content:""; position:absolute; left:50%; width:2px; height:20px; background:var(--dark-blue); transform:translateX(-1px); }
+  .demo-branch-connector::before, .demo-merge-connector::before { top:18px; }
+  .demo-branch-connector::after { top:0; }
+  .demo-merge-connector::after { top:18px; }
+  .demo-connector-arm { position:absolute; width:2px; height:20px; background:var(--dark-blue); }
+  .demo-connector-arm.left { left:25%; }
+  .demo-connector-arm.right { right:25%; }
+  .demo-branch-connector .demo-connector-arm { top:18px; }
+  .demo-merge-connector .demo-connector-arm { top:0; }
+  .demo-branches { display: grid; grid-template-columns: 1fr 1fr; gap: 23px; margin: 0; }
+  .demo-branches .demo-node { width: 100%; font-size: .99rem; }
+  .demo-caption { position: absolute; right: 20px; bottom: 18px; color: #718096; font-size: .75rem; }
+  .landing-copy { min-width: 0; }
+  @media (max-width: 1200px) {
+    .landing-hero { grid-template-columns: minmax(0,1fr) minmax(390px,.82fr); }
+    .landing-copy h1 { font-size: clamp(3.2rem, 5.8vw, 4.6rem); }
+    .landing-copy p { font-size: 1.18rem; }
+    .flow-demo { min-height: 570px; padding: 34px; }
+    .demo-node { width:min(255px,78%); padding:14px 18px; font-size:.95rem; }
+    .demo-node.start, .demo-node.end { width:120px; }
+    .demo-node.decision { width:165px; }
+    .demo-arrow { height:31px; }
+    .demo-branches { gap:14px; margin:0; }
+    .demo-branches .demo-node { font-size:.78rem; }
+  }
+  @media (max-width: 900px) {
+    .landing-hero { grid-template-columns: 1fr; gap: 36px; padding-top: 24px; }
+    .flow-demo { min-height: 440px; }
+  }
+
+  h1 { font-size: 1.4rem; font-weight: 600; text-align: center; color: var(--dark-blue); }
+  p { color: #445; text-align: center; }
+  #page-designs h1, #page-account > h1, #page-about > h1, #page-faq > h1, #page-privacy > h1 { margin-top:18px; font-size:clamp(2rem,3vw,2.7rem); letter-spacing:-.035em; }
+  #page-faq { max-width:900px; margin:0 auto; }
+
+  /* ---------- Workspace introduction ---------- */
+  .workspace-intro { text-align:center; }
+  .workspace-eyebrow { margin-top:38px; color:var(--accent); font-size:.78rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+  .workspace-intro h1 {
+    max-width: 1050px;
+    margin: 44px auto 0;
+    font-size: clamp(3rem, 5vw, 5.2rem);
+    line-height: 1.04;
+    letter-spacing: -.045em;
+    font-weight: 750;
+  }
+  .workspace-intro p {
+    max-width: 850px;
+    margin: 25px auto 0;
+    color: #52687d;
+    font-size: clamp(1.15rem, 1.5vw, 1.45rem);
+    line-height: 1.6;
+  }
+  #page-home > #recordBtn {
+    min-width: 190px;
+    min-height: 58px;
+    margin-top: 30px;
+    padding: 15px 34px;
+    border-radius: 11px;
+    font-size: 1.12rem;
+    font-weight: 700;
+    box-shadow: 0 9px 24px rgba(11,37,69,.16);
+  }
+  #page-home > #status { margin-top: 20px; font-size: 1rem; }
+  .workspace-examples { display:flex; justify-content:center; gap:9px; flex-wrap:wrap; margin-top:25px; }
+  .example-chip { border:1px solid var(--border); border-radius:999px; padding:9px 13px; background:#fff; color:#405b73; font:650 .82rem inherit; cursor:pointer; box-shadow:var(--shadow-sm); }
+  .example-chip:hover { border-color:var(--light-blue); background:#f8fbfd; }
+  .workspace-onboarding { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; max-width:900px; margin:38px auto 0; }
+  .onboarding-step { display:grid; grid-template-columns:auto 1fr; gap:13px; padding:18px; border:1px solid var(--border); border-radius:var(--radius-md); background:rgba(255,255,255,.7); text-align:left; }
+  .onboarding-number { display:grid; place-items:center; width:31px; height:31px; border-radius:9px; background:var(--dark-blue); color:#fff; font-size:.78rem; font-weight:800; }
+  .onboarding-step strong { display:block; margin-bottom:4px; color:var(--dark-blue); font-size:.9rem; }
+  .onboarding-step span:last-child { color:var(--muted); font-size:.78rem; line-height:1.45; }
+  #page-home.workspace-active .workspace-intro,
+  #page-home.workspace-active .workspace-onboarding { display:none; }
+  #page-home.workspace-active > #recordBtn { margin-top:4px; }
+  @media (max-width: 700px) {
+    .workspace-intro h1 { margin-top: 22px; font-size: clamp(2.35rem, 11vw, 3.2rem); }
+    .workspace-intro p { font-size: 1.05rem; }
+    .workspace-onboarding { grid-template-columns:1fr; }
+  }
+
+  button.primary {
+    font-size: 1rem;
+    padding: 12px 28px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    background: var(--dark-blue);
+    color: var(--white);
+    display: block;
+    margin: 20px auto 0;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  button.primary:hover { transform:translateY(-1px); box-shadow:0 8px 22px rgba(11,37,69,.16); }
+  button.primary.recording { background: var(--light-blue); color: var(--dark-blue); }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #status { margin-top: 20px; color: #445; min-height: 1.2em; text-align: center; }
+
+  #spinner {
+    display: none;
+    margin: 20px auto 0;
+    width: 34px;
+    height: 34px;
+    border: 3px solid var(--light-blue);
+    border-top-color: var(--dark-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #downloadLink {
+    display: none;
+    margin: 24px auto 0;
+    padding: 10px 24px;
+    background: var(--dark-blue);
+    color: var(--white);
+    border-radius: 8px;
+    text-decoration: none;
+    width: fit-content;
+  }
+  #recordAgainBtn { display: none; background: var(--black); }
+
+  /* ---------- Side-by-side working area ---------- */
+  #workArea {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  #workArea.active { }
+
+  .video-container {
+    position: relative;
+    width: 240px;
+    height: 180px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--black);
+    display: none;
+    flex-shrink: 0;
+  }
+  .video-container.active { display: block; }
+  video, canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 240px;
+    height: 180px;
+    transform: scaleX(-1);
+  }
+  #gestureHint { margin-top: 8px; font-size: 0.85rem; color: #667; min-height: 1.2em; text-align: center; }
+
+  #liveGraphSection { display: none; flex: 2; min-width: 500px; }
+  #liveGraphSection.active { display: block; }
+  #liveGraphLabel {
+    font-size: 0.8rem;
+    color: #789;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+  #liveTitle {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--dark-blue);
+    margin-bottom: 14px;
+    min-height: 1.4rem;
+    text-align: left;
+  }
+  #graphContainer {
+    padding: 28px;
+    border: 1px solid var(--light-blue);
+    border-radius: 12px;
+    min-height: 520px;
+    background: var(--white);
+    box-shadow: 0 4px 18px rgba(11, 37, 69, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #graphContainer svg { max-width: 100%; }
+
+  /* ---------- FAQ (click to expand) ---------- */
+  .faq-item { border-bottom: 1px solid #dde5ec; text-align: left; }
+  .faq-item .q {
+    font-weight: 600;
+    color: var(--dark-blue);
+    padding: 16px 4px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .faq-item .q::after {
+    content: "+";
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: var(--light-blue);
+    transition: transform 0.2s ease;
+  }
+  .faq-item.open .q::after { transform: rotate(45deg); }
+  .faq-item .a {
+    color: #445;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, padding 0.25s ease;
+    padding: 0 4px;
+  }
+  .faq-item.open .a { max-height: 1200px; padding: 0 4px 18px; }
+
+
+  .gesture-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .gesture-card { border: 1px solid #dde5ec; border-radius: 10px; padding: 14px; background: #f7fafc; text-align: center; }
+  .gesture-card svg { width: 40px; height: 40px; margin-bottom: 6px; }
+  .gesture-card .gname { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; color: var(--dark-blue); }
+  .gesture-card .gmeaning { font-size: 0.78rem; color: #556; line-height: 1.35; }
+
+  /* ---------- About and footer ---------- */
+  .about-card { max-width:900px; margin:24px auto 0; padding:clamp(28px,5vw,56px); border:1px solid var(--border); border-radius:var(--radius-lg); background:#fff; box-shadow:var(--shadow-sm); }
+  .about-card .about-lead { margin:0; color:var(--dark-blue); font-size:clamp(1.35rem,2.4vw,2rem); font-weight:700; line-height:1.35; text-align:left; }
+  .about-card p { color:var(--muted); font-size:1rem; line-height:1.75; text-align:left; }
+  .about-values { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:28px; }
+  .about-value { padding:18px; border-radius:var(--radius-md); background:var(--surface-soft); }
+  .about-value strong { display:block; margin-bottom:6px; color:var(--dark-blue); }
+  .about-value span { color:var(--muted); font-size:.84rem; line-height:1.45; }
+  footer { display:grid; grid-template-columns:minmax(220px,1fr) auto; align-items:center; gap:30px; padding:28px clamp(24px,4vw,60px); border-top:1px solid var(--border); background:#fff; }
+  .footer-brand { color:var(--dark-blue); font-weight:750; }
+  .footer-copy { max-width:520px; margin-top:6px; color:var(--muted); font-size:.8rem; line-height:1.5; }
+  .footer-links { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+  .footer-links button { border:0; border-radius:7px; padding:8px 10px; background:transparent; color:#52687d; font:650 .82rem inherit; cursor:pointer; }
+  .footer-links button:hover { background:var(--surface-soft); color:var(--dark-blue); }
+  @media (max-width:760px) {
+    header { align-items:flex-start; }
+    nav { justify-content:flex-end; flex-wrap:wrap; }
+    footer { grid-template-columns:1fr; }
+    .footer-links { justify-content:flex-start; }
+    .about-values { grid-template-columns:1fr; }
+  }
+  .policy-card { max-width: 820px; margin: 22px auto 0; padding: 34px 38px; border: 1px solid #c9d5e1; border-radius: 16px; background: #fff; box-shadow: 0 6px 22px rgba(11,37,69,.07); }
+  .policy-card h2 { margin: 26px 0 8px; color: var(--dark-blue); font-size: 1.05rem; }
+  .policy-card h2:first-of-type { margin-top: 0; }
+  .policy-card p, .policy-card li { color: #52687d; font-size: .94rem; line-height: 1.65; text-align: left; }
+  .policy-card ul { padding-left: 20px; }
+  .policy-date { margin-bottom: 24px; color: #718096; font-size: .82rem; text-align: center; }
+
+
+  /* ---------- Part 2 editor ---------- */
+  #editorShell {
+    display: none;
+    margin-top: 18px;
+    border: 1px solid #C8D5E1;
+    border-radius: 18px;
+    background: #FFFFFF;
+    overflow: hidden;
+    box-shadow: 0 14px 40px rgba(11,37,69,.12);
+  }
+  #editorShell.active { display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
+  #editorToolbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-height: 68px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F7FAFC 100%);
+    border-bottom: 1px solid #D9E3EC;
+  }
+  .editor-brand { display: flex; align-items: center; gap: 9px; color: var(--dark-blue); font-size: .95rem; }
+  .editor-brand::before { content: "✦"; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 8px; background: var(--dark-blue); color: #fff; font-size: .8rem; }
+  #editorToolbar button, #propertiesPanel button, #aiEditBtn {
+    border: 1px solid #AFC0D1;
+    background: white;
+    color: var(--dark-blue);
+    border-radius: 9px;
+    min-height: 38px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+  }
+  #editorToolbar button:hover, #propertiesPanel button:hover, #aiEditBtn:hover { background: #EAF1F8; border-color: #8DA9C4; transform: translateY(-1px); }
+  #finishEditBtn { background: var(--dark-blue) !important; color: #fff !important; border-color: var(--dark-blue) !important; }
+  #editorCanvasWrap { min-width: 0; padding: 16px; background: #EEF4F8; }
+  #editorCanvasHint { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 11px; padding: 7px 10px; border-radius: 8px; background: rgba(255,255,255,.8); color: #52687D; font-size: .8rem; text-align: left; }
+  #editorCanvasHint::before { content: "↖"; color: #285f8f; font-weight: 800; }
+  #editorCanvasWrap #graphContainer { min-height: 620px; border: 0; border-radius: 13px; box-shadow: 0 4px 18px rgba(11,37,69,.07); }
+  #propertiesPanel { border-left: 1px solid #D9E3EC; padding: 22px 20px; background: #fff; }
+  #propertiesPanel h3 { margin: 0 0 5px; color: var(--dark-blue); font-size: 1.05rem; }
+  .properties-hint { margin: 0 0 18px; color: #718096; font-size: .78rem; text-align: left; line-height: 1.4; }
+  .editor-empty { margin-top: 18px; padding: 22px 16px; border: 1px dashed #B9C7D8; border-radius: 11px; background: #F8FAFC; color: #667; font-size: .88rem; line-height: 1.5; text-align: center; }
+  .field { display: block; margin-bottom: 12px; font-size: .82rem; font-weight: 600; color: #40556B; }
+  .field input, .field select, .field textarea {
+    width: 100%; margin-top: 6px; padding: 9px 10px; border: 1px solid #B9C7D8;
+    border-radius: 8px; font: inherit; color: #13293D; background: #fff;
+  }
+  .field input[type="color"] { height: 38px; padding: 3px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #aiPromptBar {
+    grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 14px 16px;
+    border-top: 1px solid #D9E3EC; background: #F8FAFC;
+  }
+  .ai-prompt-label { color: var(--dark-blue); font-size: .82rem; font-weight: 800; white-space: nowrap; }
+  #aiEditInput { min-width: 0; min-height: 42px; border: 1px solid #AFC0D1; border-radius: 9px; padding: 10px 12px; font-size: .9rem; }
+  #aiEditBtn { min-height: 42px; background: #285f8f; color: #fff; border-color: #285f8f; }
+  .ai-edit-progress { display:none; grid-column:1 / -1; padding:11px 16px 5px; border-top:1px solid #E4EBF1; background:#F8FAFC; }
+  .ai-edit-progress.active { display:block; }
+  .ai-progress-copy { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; color:#405b73; font-size:.78rem; font-weight:700; }
+  #aiProgressTime { color:#718096; font-variant-numeric:tabular-nums; font-weight:600; }
+  .ai-progress-track { height:6px; overflow:hidden; border-radius:999px; background:#DDE7F0; }
+  .ai-progress-bar { width:38%; height:100%; border-radius:inherit; background:linear-gradient(90deg,#285F8F,#8DA9C4); animation:aiProgressSlide 1.15s ease-in-out infinite; }
+  @keyframes aiProgressSlide { 0% { transform:translateX(-110%); } 50% { transform:translateX(115%); } 100% { transform:translateX(290%); } }
+  #aiEditStatus { grid-column: 1 / -1; min-height: 0; padding: 6px 16px 10px; background: #F8FAFC; color: #52687D; font-size: .82rem; }
+  @media (prefers-reduced-motion: reduce) { .ai-progress-bar { animation-duration:2.4s; } }
+  #graphContainer.editor-mode svg { cursor: default; }
+  #graphContainer.editor-mode g.node, #graphContainer.editor-mode .edgePath path { cursor: pointer; }
+  #graphContainer.editor-mode g.node:hover > rect,
+  #graphContainer.editor-mode g.node:hover > polygon,
+  #graphContainer.editor-mode g.node:hover > ellipse,
+  #graphContainer.editor-mode g.node.editor-selected > rect,
+  #graphContainer.editor-mode g.node.editor-selected > polygon,
+  #graphContainer.editor-mode g.node.editor-selected > ellipse {
+    filter: drop-shadow(0 0 4px rgba(11,37,69,.45));
+    stroke-width: 3px !important;
+  }
+  #graphContainer.editor-mode .edgePath.editor-selected path { stroke-width: 4px !important; }
+  @media (max-width: 850px) {
+    #editorShell.active { grid-template-columns: 1fr; }
+    #propertiesPanel { border-left: 0; border-top: 1px solid #D9E3EC; }
+    #aiPromptBar { grid-template-columns: 1fr; }
+  }
+
+
+  /* ---------- Account, design library, and export controls ---------- */
+  .action-row { display:none; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:22px; }
+  .action-row.active { display:flex; }
+  .action-btn, .action-link {
+    display:inline-flex; align-items:center; justify-content:center; min-height:42px;
+    padding:10px 20px; border-radius:var(--radius-sm); border:1px solid var(--dark-blue);
+    background:var(--dark-blue); color:#fff; text-decoration:none; font:600 .95rem -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer;
+    transition:transform .15s ease, background .15s ease, border-color .15s ease;
+  }
+  .action-btn:hover, .action-link:hover { transform:translateY(-1px); }
+  .action-btn.secondary { background:#fff; color:var(--dark-blue); }
+  .action-btn:disabled { opacity:.55; cursor:not-allowed; }
+  #downloadLink { margin:0; width:auto; }
+  #recordAgainBtn { margin-top:14px; }
+  .hidden { display:none !important; }
+  .modal-backdrop { display:none; position:fixed; inset:0; z-index:1000; background:rgba(7,24,43,.52); align-items:center; justify-content:center; padding:20px; }
+  .modal-backdrop.active { display:flex; }
+  .modal-card { width:min(440px,100%); background:#fff; border-radius:14px; padding:22px; box-shadow:0 18px 50px rgba(0,0,0,.22); }
+  .modal-card h2 { margin:0 0 8px; color:var(--dark-blue); font-size:1.2rem; }
+  .modal-card p { text-align:left; font-size:.9rem; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+  .modal-actions button { margin:0; }
+  #loginStatus, #saveStatus { min-height:1.1em; color:#9b2c2c; font-size:.85rem; margin-top:8px; }
+  #deleteDesignModal .modal-card { width:min(480px,100%); padding:28px; border-top:4px solid #dc2626; }
+  .delete-warning-icon {
+    display:flex; align-items:center; justify-content:center; width:44px; height:44px; margin-bottom:16px;
+    border-radius:50%; background:#fee2e2; color:#b91c1c; font-size:1.35rem; font-weight:900;
+  }
+  #deleteDesignModal h2 { font-size:1.35rem; }
+  #deleteDesignModal .delete-design-name { margin:14px 0 0; padding:12px 14px; border-radius:8px; background:#f5f8fb; color:var(--dark-blue); font-weight:700; overflow-wrap:anywhere; }
+  #deleteDesignStatus { min-height:1.2em; margin-top:10px; color:#b91c1c; font-size:.85rem; }
+  .action-btn.danger { border-color:#b91c1c; background:#b91c1c; color:#fff; }
+  .action-btn.danger:hover { border-color:#991b1b; background:#991b1b; }
+  #renameDesignModal .modal-card { width:min(500px,100%); padding:28px; }
+  #renameDesignModal label { display:block; margin-top:18px; color:#314b64; font-size:.85rem; font-weight:700; }
+  #renameDesignInput {
+    width:100%; min-height:50px; margin-top:8px; padding:11px 13px; border:1.5px solid #b9c7d8;
+    border-radius:9px; color:var(--dark-blue); font:500 1rem -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  #renameDesignInput:focus { outline:none; border-color:#285f8f; box-shadow:0 0 0 4px rgba(40,95,143,.12); }
+  #renameDesignStatus { min-height:1.2em; margin-top:9px; color:#b91c1c; font-size:.85rem; }
+  #resetPasswordModal .modal-card { width:min(500px,100%); padding:30px; }
+  #resetPasswordStatus { min-height:1.2em; margin-top:9px; color:#b91c1c; font-size:.85rem; }
+  #toastRegion { position:fixed; right:22px; bottom:22px; z-index:2000; display:grid; gap:10px; width:min(390px,calc(100vw - 32px)); pointer-events:none; }
+  .site-toast { padding:13px 15px; border:1px solid #c9d5e1; border-left:4px solid #285f8f; border-radius:10px; background:#fff; color:var(--dark-blue); box-shadow:0 12px 35px rgba(7,24,43,.2); font-size:.9rem; line-height:1.4; pointer-events:auto; animation:toast-in .18s ease-out; }
+  .site-toast.error { border-left-color:#b91c1c; }
+  .site-toast.success { border-left-color:#15803d; }
+  @keyframes toast-in { from { opacity:0; transform:translateY(8px); } }
+
+  /* ---------- Authentication experience ---------- */
+  #loginModal { padding: 30px; backdrop-filter: blur(6px); background: rgba(7,24,43,.62); }
+  #loginModal .modal-card {
+    position: relative;
+    width: min(660px, 100%);
+    padding: 46px 52px 42px;
+    border: 1px solid rgba(185,199,216,.9);
+    border-radius: 24px;
+    box-shadow: 0 30px 90px rgba(4,20,38,.32);
+  }
+  .auth-kicker { color: #285f8f; font-size: .75rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+  #loginModal .modal-card h2 { margin: 10px 0 10px; font-size: 2rem; letter-spacing: -.035em; }
+  #loginModal .auth-subtitle { margin: 0 0 26px; color: #60758a; font-size: 1rem; line-height: 1.55; }
+  .auth-benefits { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 28px; }
+  .auth-benefit { padding: 7px 11px; border: 1px solid #d8e2ec; border-radius: 999px; background: #f5f8fb; color: #405b73; font-size: .76rem; font-weight: 700; }
+  #loginModal .field { margin-bottom: 17px; color: #314b64; font-size: .86rem; }
+  #loginModal .field input {
+    min-height: 52px;
+    margin-top: 7px;
+    padding: 12px 14px;
+    border: 1.5px solid #b9c7d8;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  #loginModal .field input:focus { outline: none; border-color: #285f8f; box-shadow: 0 0 0 4px rgba(40,95,143,.12); }
+  #loginModal .forgot-link { margin: -3px 0 4px; font-size: .88rem; }
+  #loginModal #loginStatus { min-height: 22px; margin-top: 10px; font-size: .9rem; }
+  #loginModal .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 16px; }
+  #loginModal .modal-actions .action-btn { min-height: 50px; width: 100%; }
+  #loginModal #submitLoginBtn { grid-column: 1 / -1; grid-row: 1; font-size: 1rem; }
+  #loginModal #toggleAuthModeBtn { grid-column: 1 / -1; grid-row: 2; background: #f5f8fb; }
+  #loginModal #cancelLoginBtn {
+    position: absolute; top: 18px; right: 18px; width: 38px; min-height: 38px; padding: 0;
+    border-color: transparent; border-radius: 50%; background: #f1f5f9; color: #52687d; font-size: 1.35rem;
+  }
+  #loginModal #cancelLoginBtn:hover { background: #e3eaf1; }
+  .auth-terms { margin: 18px 0 0; text-align: center; color: #7a8b9b; font-size: .75rem; line-height: 1.45; }
+  @media (max-width: 620px) {
+    #loginModal { padding: 14px; }
+    #loginModal .modal-card { padding: 38px 24px 28px; border-radius: 18px; }
+    #loginModal .modal-card h2 { font-size: 1.65rem; }
+  }
+  #page-designs .designs-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+  #designUsage { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 11px; border: 1px solid #c9d5e1; border-radius: 999px; background: #fff; color: #52687d; font-size: .78rem; font-weight: 700; }
+  #designGrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+  .design-card { background:#fff; border:1px solid #c9d5e1; border-radius:12px; padding:16px; box-shadow:0 3px 12px rgba(11,37,69,.06); }
+  .design-card h3 { margin:0 0 6px; color:var(--dark-blue); font-size:1rem; }
+  .design-card small { color:#667; }
+  .design-card-actions { display:flex; gap:8px; margin-top:14px; }
+  .design-card-actions button { flex:1; border:1px solid #afc0d1; border-radius:7px; padding:7px; background:#fff; color:var(--dark-blue); cursor:pointer; }
+  .design-preview {
+    position: relative; height: 190px; margin-top: 14px; overflow: hidden;
+    border: 1px solid #d7e1ea; border-radius: 10px; background: #f8fbfd;
+  }
+  .design-preview-canvas { width: 100%; height: 100%; padding: 12px; display: flex; align-items: center; justify-content: center; }
+  .design-preview-canvas svg { width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%; }
+  .design-preview-empty { color: #718096; font-size: .82rem; }
+  .design-card .design-card-actions {
+    position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: 1fr 1fr;
+    align-content: center; gap: 9px; margin: 0; padding: 18px;
+    background: rgba(11,37,69,.9); opacity: 0; transform: translateY(5px);
+    transition: opacity .18s ease, transform .18s ease; pointer-events: none;
+  }
+  .design-preview:hover .design-card-actions,
+  .design-preview:focus-within .design-card-actions { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .design-card .design-card-actions button {
+    min-width: 0; min-height: 38px; border-color: rgba(255,255,255,.7);
+    background: #fff; color: var(--dark-blue); font-weight: 700;
+  }
+  .design-card .design-card-actions .delete-design { grid-column: 1 / -1; background: transparent; color: #fff; }
+  .design-card .design-card-actions button:hover { background: #eaf1f8; }
+  .design-card .design-card-actions .delete-design:hover { background: rgba(255,255,255,.12); }
+  @media (hover: none) {
+    .design-card .design-card-actions { position: static; opacity: 1; transform: none; pointer-events: auto; background: #f5f8fb; padding: 10px; }
+    .design-card .design-card-actions .delete-design { color: var(--dark-blue); border-color: #afc0d1; }
+  }
+  #exportOptions { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  #exportOptions .field:last-child { grid-column:1/-1; }
+  #editorTitleInput { width:min(360px,45vw); border:1px solid #AFC0D1; border-radius:7px; padding:7px 10px; font:600 .95rem inherit; color:var(--dark-blue); }
+  #editorToolbar .toolbar-spacer { flex:1; }
+  #saveDesignBtn { display:none; }
+  #saveDesignBtn.visible { display:inline-flex; }
+  .editor-section-title { margin:14px 0 8px; padding-top:10px; border-top:1px solid #e1e8ef; color:var(--dark-blue); font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
+
+
+  #autosaveIndicator { font-size:.8rem; color:#52687D; min-width:90px; text-align:right; }
+  #accountNav { display:none; }
+  #accountNav.visible { display:inline-block; }
+  .account-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:18px; }
+  .account-card { background:#fff; border:1px solid #c9d5e1; border-radius:12px; padding:18px; }
+  .account-card h3 { margin:0 0 10px; color:var(--dark-blue); }
+  .account-stat { font-size:1.6rem; font-weight:700; color:var(--dark-blue); }
+  .design-card-actions { flex-wrap:wrap; }
+  .design-card-actions button { min-width:72px; }
+  .forgot-link { border:0; background:none; color:#285f8f; padding:0; margin-top:8px; cursor:pointer; text-decoration:underline; font:inherit; }
+  #versionList { display:grid; gap:8px; margin-top:12px; max-height:260px; overflow:auto; }
+  .version-row { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #d7e0e8; border-radius:8px; padding:9px 10px; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="brand-mark">V→</span><span>Voice to Flowchart</span></div>
+  <nav>
+    <button class="nav-btn active" data-page="landing">Home</button>
+    <button class="nav-btn hidden" id="workspaceNav" data-page="home">Workspace</button>
+    <button class="nav-btn hidden" id="myDesignsNav" data-page="designs">My Designs</button>
+    <button class="nav-btn" data-page="faq">Help</button>
+    <button class="nav-btn" id="accountNav" data-page="account">Account</button>
+    <button class="nav-btn" id="loginNavBtn" type="button">Login</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ---------- PUBLIC LANDING PAGE ---------- -->
+  <section class="page active" id="page-landing">
+    <div class="landing-hero">
+      <div class="landing-copy">
+        <div class="landing-eyebrow">Explain it. See it.</div>
+        <h1>Turn your spoken ideas into clear flowcharts.</h1>
+        <p>Describe a process naturally and Flowchart App turns your explanation into a structured, editable diagram—while you speak.</p>
+        <div class="landing-actions">
+          <button class="action-btn" id="landingSignupBtn" type="button">Create account</button>
+          <button class="action-btn secondary" id="landingLoginBtn" type="button">Log in</button>
+        </div>
+        <div class="landing-note">Built for clearer thinking, one explanation at a time.</div>
+      </div>
+      <div class="flow-demo" aria-label="Example generated flowchart">
+        <div class="demo-node start">Start</div>
+        <div class="demo-arrow"></div>
+        <div class="demo-node">Explain your process</div>
+        <div class="demo-arrow"></div>
+        <div class="demo-node decision"><span>Decision detected?</span></div>
+        <div class="demo-branch-connector" aria-hidden="true"><span class="demo-connector-arm left"></span><span class="demo-connector-arm right"></span></div>
+        <div class="demo-branches">
+          <div class="demo-node">Build the main path</div>
+          <div class="demo-node">Create a branch</div>
+        </div>
+        <div class="demo-merge-connector" aria-hidden="true"><span class="demo-connector-arm left"></span><span class="demo-connector-arm right"></span></div>
+        <div class="demo-node end">Editable chart</div>
+        <div class="demo-caption">Generated from natural speech</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- HOME / MAIN TOOL ---------- -->
+  <section class="page" id="page-home">
+    <div class="workspace-intro">
+      <div class="workspace-eyebrow">Your diagram workspace</div>
+      <h1>Explain the process. We’ll map the flow.</h1>
+      <p>Speak naturally about the steps, decisions, and outcomes. Your flowchart will take shape while you talk.</p>
+      <div class="workspace-examples" aria-label="Example processes">
+        <button type="button" class="example-chip" data-example="A customer submits an order, payment is checked, and successful orders are shipped.">Order fulfillment</button>
+        <button type="button" class="example-chip" data-example="An employee submits a request, their manager reviews it, and approved requests go to finance.">Approval workflow</button>
+        <button type="button" class="example-chip" data-example="A support ticket is categorized, assigned by priority, resolved, and then closed after customer confirmation.">Support escalation</button>
+      </div>
+    </div>
+
+    <button class="primary" id="recordBtn">Start Talking</button>
+    <div id="spinner"></div>
+    <div id="status"></div>
+    <div id="finalActions" class="action-row">
+      <button class="action-btn secondary" id="editFlowchartBtn" type="button">Edit</button>
+      <button class="action-btn" id="exportBtn" type="button">Download</button>
+      <button class="action-btn secondary" id="saveDesignBtn" type="button">Save design</button>
+      <a id="downloadLink" class="hidden" href="#" download="flowchart.pdf">Download your flowchart</a>
+    </div>
+    <button class="primary" id="recordAgainBtn">Start Over</button>
+
+    <div class="workspace-onboarding">
+      <div class="onboarding-step"><span class="onboarding-number">1</span><span><strong>Describe it naturally</strong><span>No diagram terminology needed—just explain what happens.</span></span></div>
+      <div class="onboarding-step"><span class="onboarding-number">2</span><span><strong>Watch it take shape</strong><span>Speech and optional gestures become live nodes and branches.</span></span></div>
+      <div class="onboarding-step"><span class="onboarding-number">3</span><span><strong>Review and refine</strong><span>Edit the result, save versions, and export when it feels right.</span></span></div>
+    </div>
+
+    <div id="workArea">
+      <div>
+        <div class="video-container" id="videoContainer">
+          <video id="webcam" autoplay playsinline muted></video>
+          <canvas id="overlay"></canvas>
+        </div>
+        <div id="gestureHint"></div>
+      </div>
+
+      <div id="liveGraphSection">
+        <div id="liveGraphLabel">Building live</div>
+        <div id="liveTitle"></div>
+        <div id="graphContainer"></div>
+
+        <div id="editorShell">
+          <div id="editorToolbar">
+            <strong class="editor-brand">Flowchart Editor</strong>
+            <input id="editorTitleInput" aria-label="Flowchart title" value="Flowchart">
+            <span class="toolbar-spacer"></span>
+            <span id="autosaveIndicator"></span>
+            <button type="button" id="addNodeBtn">＋ Add step</button>
+            <button type="button" id="undoBtn" title="Undo last change">↶ Undo</button>
+            <button type="button" id="redoBtn" title="Redo last change">↷ Redo</button>
+            <button type="button" id="finishEditBtn">Done editing</button>
+          </div>
+          <div id="editorCanvasWrap">
+            <div id="editorCanvasHint">Select any node or connection to customize it</div>
+          </div>
+          <aside id="propertiesPanel">
+            <h3>Properties</h3>
+            <p class="properties-hint">Fine-tune the selected item.</p>
+            <div id="propertyContent" class="editor-empty">Select a node or connection to edit it.</div>
+          </aside>
+          <div id="aiPromptBar">
+            <span class="ai-prompt-label">✦ Edit with AI</span>
+            <input id="aiEditInput" type="text" placeholder="Try: Add legal review after HR approval">
+            <button type="button" id="aiEditBtn">Apply change</button>
+          </div>
+          <div id="aiEditProgress" class="ai-edit-progress" aria-hidden="true">
+            <div class="ai-progress-copy"><span id="aiProgressLabel">Reading your instruction…</span><span id="aiProgressTime">0.0s</span></div>
+            <div class="ai-progress-track"><div class="ai-progress-bar"></div></div>
+          </div>
+          <div id="aiEditStatus" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- MY DESIGNS ---------- -->
+  <section class="page" id="page-designs">
+    <div class="designs-header">
+      <h1 style="margin:0;text-align:left">My Designs</h1>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span id="designUsage">0 of 3 designs</span><button class="action-btn secondary" id="newDesignBtn" type="button">+ New design</button><button class="action-btn secondary" id="refreshDesignsBtn" type="button">Refresh</button></div>
+    </div>
+    <p id="designsMessage">Log in to view saved designs.</p>
+    <div id="designGrid"></div>
+  </section>
+
+
+
+  <!-- ---------- ACCOUNT ---------- -->
+  <section class="page" id="page-account">
+    <h1>Account</h1>
+    <p>Manage your profile and view your current plan.</p>
+    <div class="account-grid">
+      <div class="account-card">
+        <h3>Profile</h3>
+        <label class="field">Email<input id="accountEmail" type="email" disabled></label>
+        <label class="field">Username<input id="accountUsername" maxlength="60"></label>
+        <label class="field">Display name<input id="accountDisplayName" maxlength="100"></label>
+        <button class="action-btn" id="saveProfileBtn" type="button">Save profile</button>
+        <div id="profileStatus"></div>
+      </div>
+      <div class="account-card">
+        <h3>Plan</h3>
+        <div class="account-stat" id="accountPlan">Free</div>
+        <p>Daily AI usage and short-term request limits are active during private testing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- ABOUT US ---------- -->
+  <section class="page" id="page-about">
+    <h1>About Voice to Flowchart</h1>
+    <div class="about-card">
+      <p class="about-lead">Diagramming should begin with understanding—not drawing tools.</p>
+      <p>Voice to Flowchart is an early-stage project exploring a simpler way to turn spoken explanations into structured, editable workflows. The goal is to let people focus on the process they understand while the software handles nodes, branches, and layout.</p>
+      <p>Flowcharts are the starting point. Over time, the same approach can support other structured visuals such as decision trees, system diagrams, UML, and organization charts.</p>
+      <div class="about-values">
+        <div class="about-value"><strong>Natural first</strong><span>Explain ideas in your own words instead of learning a drawing interface.</span></div>
+        <div class="about-value"><strong>Editable always</strong><span>AI creates the first draft; people stay in control of the final result.</span></div>
+        <div class="about-value"><strong>Built in the open</strong><span>Private testing and real feedback guide what becomes part of the product.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- FAQ ---------- -->
+  <section class="page" id="page-faq">
+    <h1>Frequently Asked Questions</h1>
+
+    <div class="faq-item">
+      <div class="q">How do I use the gestures?</div>
+      <div class="a">
+        Speak naturally while you record — gestures are optional and just help confirm or refine what you say. Here's what each one does:
+        <div class="gesture-grid">
+          <div class="gesture-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><path d="M7 11V7a2 2 0 0 1 4 0v4M11 11V5a2 2 0 0 1 4 0v6M15 11V7a2 2 0 0 1 4 0v6c0 3.5-2 6-6 6H9c-2 0-3-1-4-3l-1.5-3c-.5-1 .3-2 1.3-1.5L7 13"/></svg>
+            <div class="gname">👍 Thumbs Up</div>
+            <div class="gmeaning">Confirms the step or connection you just mentioned is correct.</div>
+          </div>
+          <div class="gesture-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><path d="M9 11V5a1.5 1.5 0 0 1 3 0v6m0-3a1.5 1.5 0 0 1 3 0v3m0-1a1.5 1.5 0 0 1 3 0v3c0 3.5-2 6-6 6H9c-2 0-3-1-4-3l-1.5-3c-.5-1 .3-2 1.3-1.5L7 13V4a1.5 1.5 0 0 1 3 0v7"/></svg>
+            <div class="gname">☝️ Pointing</div>
+            <div class="gmeaning">Emphasizes or indicates the specific step you're talking about.</div>
+          </div>
+          <div class="gesture-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><rect x="5" y="8" width="14" height="11" rx="4"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg>
+            <div class="gname">✊ Closed Fist</div>
+            <div class="gmeaning">Undoes or removes the most recently mentioned step.</div>
+          </div>
+          <div class="gesture-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><path d="M4 12h13M13 7l5 5-5 5"/></svg>
+            <div class="gname">👉 Swipe Right</div>
+            <div class="gmeaning">"After this" — links the subject before and after the swipe in sequence.</div>
+          </div>
+          <div class="gesture-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><path d="M20 12H7M11 7l-5 5 5 5"/></svg>
+            <div class="gname">👈 Swipe Left</div>
+            <div class="gmeaning">Similar to swipe right, but can indicate reversing or going back a step.</div>
+          </div>
+          <div class="gesture-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><path d="M9 12h6"/></svg>
+            <div class="gname">🙌 Two-Hand Branch</div>
+            <div class="gmeaning">Both palms open, one on each side of frame — splits the current subject into two separate paths.</div>
+          </div>
+          <div class="gesture-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M4 11h16"/></svg>
+            <div class="gname">📦 Box Motion</div>
+            <div class="gmeaning">Spread two fingers apart, then bring them back together — marks the current idea as its own separate node.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="q">Do I need to record on a specific browser?</div>
+      <div class="a">Yes — live transcription uses your browser's built-in speech recognition, which currently works reliably in Chrome. Other browsers may not support it.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="q">Is my audio or video saved anywhere?</div>
+      <div class="a">Camera frames are processed in your browser for hand-landmark detection and are not intentionally stored by Voice to Flowchart. Speech recognition may be handled by your browser provider; the resulting transcript is sent to the application to build the diagram. See Privacy for more detail.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="q">Why does the flowchart sometimes look messy while I'm still talking?</div>
+      <div class="a">The live view prioritizes speed, so it builds the graph in real time as you speak — occasionally producing a rough or duplicate node. Once you click Stop, a final cleanup pass double-checks everything against your full explanation before the downloadable version is created.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="q">Can I edit the flowchart after it's generated?</div>
+      <div class="a">Yes. Open the editor to change node text and styling, adjust connections, add or remove steps, undo changes, or describe an edit in natural language.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="q">What do the thick and thin lines mean?</div>
+      <div class="a">Thick lines mark the main, expected path through your process. Thin lines mark secondary paths — like error handling, rejections, or side branches.</div>
+    </div>
+  </section>
+
+  <!-- ---------- TEMPORARY PRIVACY POLICY ---------- -->
+  <section class="page" id="page-privacy">
+    <h1>Privacy Policy</h1>
+    <div class="policy-date">Temporary private-testing policy · Effective August 1, 2026</div>
+    <div class="policy-card">
+      <h2>What this app collects</h2>
+      <p>Flowchart App processes the account information you provide, your transcribed process descriptions, detected gesture names and timestamps, generated flowchart data, and designs you choose to save.</p>
+
+      <h2>Microphone and camera use</h2>
+      <p>The current browser experience uses your microphone for speech recognition and your camera for live hand-landmark detection. Camera frames are processed in the browser and are not intentionally stored by Flowchart App. Speech recognition may be processed by your browser or browser provider. The resulting transcript—not your live camera feed—is sent to the application to generate a flowchart.</p>
+
+      <h2>AI and service providers</h2>
+      <p>Transcript text, gesture events, and relevant flowchart data may be sent to OpenAI to generate, repair, title, or edit diagrams. Supabase is used for account authentication and for storing profiles, saved designs, transcripts, and version snapshots.</p>
+
+      <h2>How information is used</h2>
+      <ul>
+        <li>To create, edit, export, save, and reopen your diagrams.</li>
+        <li>To authenticate your account and keep designs associated with you.</li>
+        <li>To diagnose errors and improve the private testing experience.</li>
+      </ul>
+
+      <h2>Your choices</h2>
+      <p>You can use Start Over to clear the current browser workspace, delete saved designs from My Designs, and stop camera or microphone access through your browser settings. This test build limits each account to three saved designs.</p>
+
+      <h2>Private-testing notice</h2>
+      <p>This application is an early private test and should not be used for confidential, regulated, medical, financial, legal, or highly sensitive information. This temporary policy will be revised before a broader public launch.</p>
+
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div>
+    <div class="footer-brand">Voice to Flowchart</div>
+    <div class="footer-copy">An early private test for turning natural explanations into structured, editable diagrams.</div>
+  </div>
+  <div class="footer-links" aria-label="Footer navigation">
+    <button type="button" data-footer-page="about">About</button>
+    <button type="button" data-footer-page="faq">Help</button>
+    <button type="button" data-footer-page="privacy">Privacy</button>
+  </div>
+</footer>
+
+<div id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+
+<div class="modal-backdrop" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginHeading">
+  <div class="modal-card">
+    <div class="auth-kicker">Voice to Flowchart</div>
+    <h2 id="loginHeading">Log in</h2>
+    <p class="auth-subtitle" id="authSubtitle">Welcome back. Continue building diagrams from the way you naturally explain ideas.</p>
+    <div class="auth-benefits" aria-label="Account benefits">
+      <span class="auth-benefit">Editable diagrams</span>
+      <span class="auth-benefit">Saved designs</span>
+      <span class="auth-benefit">Version history</span>
+    </div>
+    <label class="field signup-only hidden">Username<input id="signupUsername" autocomplete="username" placeholder="Choose a username"></label>
+    <label class="field">Email<input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+    <label class="field">Password<input id="loginPassword" type="password" autocomplete="current-password" maxlength="128" placeholder="At least 10 characters"></label>
+    <button class="forgot-link login-only" id="forgotPasswordBtn" type="button">Forgot password?</button>
+    <div id="loginStatus"></div>
+    <div class="modal-actions">
+      <button class="action-btn secondary" id="cancelLoginBtn" type="button" aria-label="Close authentication dialog">×</button>
+      <button class="action-btn secondary" id="toggleAuthModeBtn" type="button">Create account instead</button>
+      <button class="action-btn" id="submitLoginBtn" type="button">Log in</button>
+    </div>
+    <p class="auth-terms">By continuing, you agree to use Flowchart App responsibly and acknowledge our <button type="button" id="authPrivacyLink" class="forgot-link">Privacy Policy</button>.</p>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="versionsModal" role="dialog" aria-modal="true" aria-labelledby="versionsHeading">
+  <div class="modal-card">
+    <h2 id="versionsHeading">Version history</h2>
+    <p>Open a previous snapshot without overwriting the current design.</p>
+    <div id="versionList"></div>
+    <div class="modal-actions"><button class="action-btn secondary" id="closeVersionsBtn" type="button">Close</button><button class="action-btn" id="createVersionBtn" type="button">Create snapshot</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportHeading">
+  <div class="modal-card">
+    <h2 id="exportHeading">Export flowchart</h2>
+    <div id="exportOptions">
+      <label class="field">Format<select id="exportFormat"><option value="pdf">PDF</option><option value="png">PNG</option><option value="svg">SVG</option></select></label>
+      <label class="field">Page size<select id="exportPageSize"><option value="a4">A4</option><option value="letter">Letter</option><option value="legal">Legal</option><option value="a3">A3</option></select></label>
+      <label class="field">Orientation<select id="exportOrientation"><option value="auto">Auto</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label>
+      <label class="field">Scale<select id="exportScale"><option value="fit">Fit to page</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option></select></label>
+      <label class="field">Margin<input id="exportMargin" type="number" min="0" max="100" value="34"></label>
+    </div>
+    <div class="modal-actions"><button class="action-btn secondary" id="cancelExportBtn" type="button">Cancel</button><button class="action-btn" id="confirmExportBtn" type="button">Export</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="deleteDesignModal" role="alertdialog" aria-modal="true" aria-labelledby="deleteDesignHeading" aria-describedby="deleteDesignDescription">
+  <div class="modal-card">
+    <div class="delete-warning-icon" aria-hidden="true">!</div>
+    <h2 id="deleteDesignHeading">Delete this design?</h2>
+    <p id="deleteDesignDescription">This permanently removes the flowchart and its version history. This action cannot be undone.</p>
+    <p class="delete-design-name" id="deleteDesignName"></p>
+    <div id="deleteDesignStatus" role="status" aria-live="polite"></div>
+    <div class="modal-actions">
+      <button class="action-btn secondary" id="cancelDeleteDesignBtn" type="button">Keep design</button>
+      <button class="action-btn danger" id="confirmDeleteDesignBtn" type="button">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="renameDesignModal" role="dialog" aria-modal="true" aria-labelledby="renameDesignHeading">
+  <div class="modal-card">
+    <h2 id="renameDesignHeading">Rename design</h2>
+    <p>Choose a clear name so this flowchart is easy to find later.</p>
+    <label for="renameDesignInput">Design name
+      <input id="renameDesignInput" type="text" maxlength="200" autocomplete="off">
+    </label>
+    <div id="renameDesignStatus" role="status" aria-live="polite"></div>
+    <div class="modal-actions">
+      <button class="action-btn secondary" id="cancelRenameDesignBtn" type="button">Cancel</button>
+      <button class="action-btn" id="confirmRenameDesignBtn" type="button">Save name</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="resetPasswordModal" role="dialog" aria-modal="true" aria-labelledby="resetPasswordHeading">
+  <div class="modal-card">
+    <h2 id="resetPasswordHeading">Choose a new password</h2>
+    <p>Use at least 10 characters. A longer, unique password is safest.</p>
+    <label class="field">New password<input id="newPasswordInput" type="password" minlength="10" maxlength="128" autocomplete="new-password"></label>
+    <label class="field">Confirm password<input id="confirmNewPasswordInput" type="password" minlength="10" maxlength="128" autocomplete="new-password"></label>
+    <div id="resetPasswordStatus" role="status" aria-live="polite"></div>
+    <div class="modal-actions">
+      <button class="action-btn secondary" id="cancelResetPasswordBtn" type="button">Cancel</button>
+      <button class="action-btn" id="completeResetPasswordBtn" type="button">Update password</button>
+    </div>
+  </div>
+</div>
+
+  <script type="module">
+    import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+    function notify(message, type = "info", duration = 4200) {
+      const toast = document.createElement("div");
+      toast.className = `site-toast ${type}`;
+      toast.setAttribute("role", type === "error" ? "alert" : "status");
+      toast.textContent = message;
+      document.getElementById("toastRegion").appendChild(toast);
+      const remove = () => toast.remove();
+      toast.addEventListener("click", remove);
+      setTimeout(remove, duration);
+    }
+
+    // ---------- Header nav ----------
+    function showPage(pageName) {
+      const protectedPages = new Set(["home", "designs", "account"]);
+      if (protectedPages.has(pageName) && !isLoggedIn) {
+        pageName = "landing";
+      }
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.page === pageName));
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      const page = document.getElementById("page-" + pageName);
+      if (page) page.classList.add("active");
+    }
+    document.querySelectorAll(".nav-btn[data-page]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        showPage(btn.dataset.page);
+        if (btn.dataset.page === "designs") loadDesigns();
+        if (btn.dataset.page === "account") loadProfile();
+      });
+    });
+    document.querySelectorAll("[data-footer-page]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        showPage(btn.dataset.footerPage);
+        window.scrollTo({top: 0, behavior: "smooth"});
+      });
+    });
+
+    // ---------- FAQ accordion ----------
+    document.querySelectorAll(".faq-item .q").forEach(question => {
+      question.addEventListener("click", () => {
+        question.parentElement.classList.toggle("open");
+      });
+    });
+
+    const recordBtn = document.getElementById("recordBtn");
+    const recordAgainBtn = document.getElementById("recordAgainBtn");
+    const spinner = document.getElementById("spinner");
+    const status = document.getElementById("status");
+    const downloadLink = document.getElementById("downloadLink");
+    const workArea = document.getElementById("workArea");
+    const videoContainer = document.getElementById("videoContainer");
+    const video = document.getElementById("webcam");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+    const gestureHint = document.getElementById("gestureHint");
+    const liveGraphSection = document.getElementById("liveGraphSection");
+    const liveTitle = document.getElementById("liveTitle");
+    const graphContainer = document.getElementById("graphContainer");
+    const editorShell = document.getElementById("editorShell");
+    const propertyContent = document.getElementById("propertyContent");
+    const aiEditInput = document.getElementById("aiEditInput");
+    const aiEditBtn = document.getElementById("aiEditBtn");
+    const aiEditStatus = document.getElementById("aiEditStatus");
+    const aiEditProgress = document.getElementById("aiEditProgress");
+    const aiProgressLabel = document.getElementById("aiProgressLabel");
+    const aiProgressTime = document.getElementById("aiProgressTime");
+    const finalActions = document.getElementById("finalActions");
+    const editFlowchartBtn = document.getElementById("editFlowchartBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const saveDesignBtn = document.getElementById("saveDesignBtn");
+    const editorTitleInput = document.getElementById("editorTitleInput");
+    const loginNavBtn = document.getElementById("loginNavBtn");
+    const workspaceNav = document.getElementById("workspaceNav");
+    const myDesignsNav = document.getElementById("myDesignsNav");
+    const accountNav = document.getElementById("accountNav");
+    const autosaveIndicator = document.getElementById("autosaveIndicator");
+    const loginModal = document.getElementById("loginModal");
+    const exportModal = document.getElementById("exportModal");
+    const deleteDesignModal = document.getElementById("deleteDesignModal");
+    const renameDesignModal = document.getElementById("renameDesignModal");
+    const resetPasswordModal = document.getElementById("resetPasswordModal");
+    let isLoggedIn = false;
+    let currentDesignId = null;
+    let autosaveTimer = null;
+    let autosaveInFlight = false;
+    let versionsDesignId = null;
+    let deleteDesignTarget = null;
+    let renameDesignTarget = null;
+    let pendingResetTokens = null;
+    let savedTranscript = "";
+
+    document.querySelectorAll(".example-chip").forEach(button => {
+      button.addEventListener("click", () => {
+        status.textContent = `Try saying: “${button.dataset.example}”`;
+        recordBtn.focus();
+      });
+    });
+
+    // ---------- Mermaid setup (colors matched to the site palette) ----------
+    let mermaidReady = false;
+    function waitForMermaid() {
+      if (window.mermaid) {
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "strict",
+          theme: "base",
+          flowchart: {
+            // Mermaid normally uses HTML inside SVG foreignObject elements for
+            // node labels. svg2pdf cannot reliably render those elements, which
+            // caused exported PDFs to contain empty node outlines. Native SVG
+            // text/tspan labels remain vector text and export correctly.
+            htmlLabels: false,
+            useMaxWidth: false,
+            curve: "basis",
+          },
+          themeVariables: {
+            primaryColor: "#FFFFFF",
+            primaryBorderColor: "#0B2545",
+            primaryTextColor: "#13293D",
+            lineColor: "#0B2545",
+            fontFamily: "Arial, Helvetica, sans-serif",
+          },
+        });
+        mermaidReady = true;
+      } else {
+        setTimeout(waitForMermaid, 100);
+      }
+    }
+    waitForMermaid();
+
+    let renderCount = 0;
+    function graphToMermaid(graph) {
+      if (!graph.nodes || graph.nodes.length === 0) return "graph TD\n  empty[Listening...]";
+
+      const safeNodeId = (id) => "n" + String(id).replace(/[^a-zA-Z0-9]/g, "");
+      const safeText = (value) => String(value || "").replace(/["\[\]{}()]/g, "");
+      const nodeLine = (node, indent = "  ") => {
+        const safeId = safeNodeId(node.id);
+        const safeLabel = safeText(node.label);
+        const type = node.type || "process";
+        const editorStyle = node.metadata && node.metadata.editor_style ? node.metadata.editor_style : {};
+        const customShape = editorStyle.customShape || "";
+        if (customShape === "rounded") return `${indent}${safeId}("${safeLabel}")`;
+        if (customShape === "circle") return `${indent}${safeId}(("${safeLabel}"))`;
+        if (type === "decision") return `${indent}${safeId}{"${safeLabel}"}`;
+        if (type === "start" || type === "end") return `${indent}${safeId}(["${safeLabel}"])`;
+        if (type === "input_output") return `${indent}${safeId}[/"${safeLabel}"/]`;
+        return `${indent}${safeId}["${safeLabel}"]`;
+      };
+
+      let lines = ["graph TD"];
+      const phases = Array.isArray(graph.phases) ? graph.phases : [];
+      const specialNodes = graph.nodes.filter(node => node.type === "start" || node.type === "end");
+      const ordinaryNodes = graph.nodes.filter(node => node.type !== "start" && node.type !== "end");
+
+      // Start/End stay outside the phase groups so the diagram retains one clear
+      // entry and exit. Phase groups create stable hierarchy and subtle headers.
+      for (const node of specialNodes) lines.push(nodeLine(node));
+
+      const phaseNames = [...phases];
+      for (const node of ordinaryNodes) {
+        const phase = node.phase || "Workflow";
+        if (!phaseNames.includes(phase)) phaseNames.push(phase);
+      }
+
+      phaseNames.forEach((phase, index) => {
+        const nodes = ordinaryNodes.filter(node => (node.phase || "Workflow") === phase);
+        if (!nodes.length) return;
+        const phaseId = "phase" + index;
+        lines.push(`  subgraph ${phaseId}["${safeText(phase)}"]`);
+        lines.push("    direction TB");
+        nodes.forEach(node => lines.push(nodeLine(node, "    ")));
+        lines.push("  end");
+      });
+
+      for (const edge of graph.edges || []) {
+        const from = safeNodeId(edge.from);
+        const to = safeNodeId(edge.to);
+        const layoutRole = edge.metadata && edge.metadata.layout
+          ? edge.metadata.layout.role
+          : null;
+        const isRetry = layoutRole === "retry" || edge.primary === false;
+        const editorStyle = edge.metadata && edge.metadata.editor_style ? edge.metadata.editor_style : {};
+        const arrowChoice = editorStyle.arrow || "arrow";
+        const arrow = arrowChoice === "none" ? (isRetry ? "-.-" : "---") : (isRetry ? "-.->" : "==>");
+        if (edge.label) {
+          lines.push(`  ${from} ${arrow}|"${safeText(edge.label)}"| ${to}`);
+        } else {
+          lines.push(`  ${from} ${arrow} ${to}`);
+        }
+      }
+
+      // Keep phase containers subtle so they guide the eye without dominating.
+      phaseNames.forEach((phase, index) => {
+        lines.push(`  style phase${index} fill:#FFFFFF,stroke:#B9C7D8,stroke-width:1px,color:#0B2545`);
+      });
+
+      // User-defined editor styles live in canonical node/edge metadata and are
+      // translated into Mermaid directives on every render.
+      for (const node of graph.nodes || []) {
+        const style = node.metadata && node.metadata.editor_style ? node.metadata.editor_style : {};
+        const parts = [];
+        if (style.fill) parts.push(`fill:${style.fill}`);
+        if (style.stroke) parts.push(`stroke:${style.stroke}`);
+        if (style.strokeWidth) parts.push(`stroke-width:${style.strokeWidth}px`);
+        if (style.textColor) parts.push(`color:${style.textColor}`);
+        if (style.fontSize) parts.push(`font-size:${style.fontSize}px`);
+        if (style.fontFamily) parts.push(`font-family:${style.fontFamily}`);
+        if (parts.length) lines.push(`  style ${safeNodeId(node.id)} ${parts.join(",")}`);
+      }
+      (graph.edges || []).forEach((edge, index) => {
+        const style = edge.metadata && edge.metadata.editor_style ? edge.metadata.editor_style : {};
+        const parts = [];
+        if (style.stroke) parts.push(`stroke:${style.stroke}`);
+        if (style.strokeWidth) parts.push(`stroke-width:${style.strokeWidth}px`);
+        if (style.pattern === "dashed") parts.push("stroke-dasharray:8 5");
+        if (style.pattern === "dotted") parts.push("stroke-dasharray:2 5");
+        if (parts.length) lines.push(`  linkStyle ${index} ${parts.join(",")}`);
+      });
+      return lines.join("\n");
+    }
+
+    async function renderLiveGraph(graph) {
+      if (!mermaidReady) return;
+      const code = graphToMermaid(graph);
+      renderCount++;
+      try {
+        const { svg } = await mermaid.render("livegraph" + renderCount, code);
+        graphContainer.innerHTML = svg;
+        applyEditorNodeSizing();
+        applyEditorEdgeShapes();
+        if (editorShell.classList.contains("active")) attachEditorInteractions();
+      } catch (err) {
+        console.error("Mermaid render error:", err, code);
+      }
+    }
+
+    function replaceForeignObjectsWithSvgText(svgRoot) {
+      const namespace = "http://www.w3.org/2000/svg";
+      svgRoot.querySelectorAll("foreignObject").forEach(foreignObject => {
+        const label = String(foreignObject.textContent || "").replace(/\s+/g, " ").trim();
+        if (!label) {
+          foreignObject.remove();
+          return;
+        }
+
+        const x = Number.parseFloat(foreignObject.getAttribute("x") || "0") || 0;
+        const y = Number.parseFloat(foreignObject.getAttribute("y") || "0") || 0;
+        const width = Math.max(Number.parseFloat(foreignObject.getAttribute("width") || "120") || 120, 24);
+        const height = Math.max(Number.parseFloat(foreignObject.getAttribute("height") || "24") || 24, 16);
+        const fontSize = 14;
+        const maxCharacters = Math.max(8, Math.floor(width / (fontSize * 0.58)));
+        const words = label.split(" ");
+        const lines = [];
+        let currentLine = "";
+
+        words.forEach(word => {
+          const candidate = currentLine ? `${currentLine} ${word}` : word;
+          if (candidate.length <= maxCharacters || !currentLine) currentLine = candidate;
+          else { lines.push(currentLine); currentLine = word; }
+        });
+        if (currentLine) lines.push(currentLine);
+
+        const textElement = document.createElementNS(namespace, "text");
+        const nodeGroup = foreignObject.closest("g.node");
+        const graphNode = nodeGroup ? identifyNodeFromGroup(nodeGroup) : null;
+        const textColor = graphNode && ["start", "end"].includes(graphNode.type) ? "#FFFFFF" : "#13293D";
+        const centerX = x + width / 2;
+        const lineHeight = fontSize * 1.18;
+        const firstLineY = y + height / 2 - ((lines.length - 1) * lineHeight) / 2;
+        textElement.setAttribute("x", String(centerX));
+        textElement.setAttribute("y", String(firstLineY));
+        textElement.setAttribute("text-anchor", "middle");
+        textElement.setAttribute("font-family", "Arial, Helvetica, sans-serif");
+        textElement.setAttribute("font-size", String(fontSize));
+        textElement.setAttribute("font-weight", "600");
+        textElement.setAttribute("fill", textColor);
+
+        lines.forEach((line, index) => {
+          const tspan = document.createElementNS(namespace, "tspan");
+          tspan.setAttribute("x", String(centerX));
+          if (index > 0) tspan.setAttribute("dy", String(lineHeight));
+          tspan.textContent = line;
+          textElement.appendChild(tspan);
+        });
+        foreignObject.replaceWith(textElement);
+      });
+    }
+
+    async function exportVisibleGraphToPdf(title, options = {}) {
+      const svg = graphContainer.querySelector("svg");
+      if (!svg || !window.jspdf || !window.jspdf.jsPDF) {
+        throw new Error("The proportional PDF exporter is not ready");
+      }
+
+      // Wait for browser fonts and Mermaid's final layout before cloning. This
+      // avoids exporting while label metrics are still being resolved.
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      // Clone the exact finalized Mermaid SVG shown on screen. Exporting this
+      // same vector object guarantees that node, text, and edge proportions are
+      // preserved instead of asking a second layout engine to redraw the graph.
+      const clone = svg.cloneNode(true);
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+      clone.removeAttribute("width");
+      clone.removeAttribute("height");
+
+      // Mermaid can still emit HTML-backed labels in some version/configuration
+      // combinations. Convert them in the export clone to portable native SVG
+      // text so svg2pdf does not omit labels or abort the download.
+      replaceForeignObjectsWithSvgText(clone);
+
+      // Ensure SVG text has an explicit portable font instead of depending on
+      // page-level CSS that is unavailable to the PDF renderer.
+      clone.querySelectorAll("text, tspan").forEach(element => {
+        element.setAttribute("font-family", "Arial, Helvetica, sans-serif");
+        const computed = window.getComputedStyle(element);
+        if (computed.fontSize) element.setAttribute("font-size", computed.fontSize);
+        if (computed.fontWeight) element.setAttribute("font-weight", computed.fontWeight);
+        if (computed.fill && computed.fill !== "none") element.setAttribute("fill", computed.fill);
+      });
+
+      const viewBox = (clone.getAttribute("viewBox") || "0 0 1000 1000")
+        .trim().split(/\s+/).map(Number);
+      const graphWidth = Math.max(viewBox[2] || 1000, 1);
+      const graphHeight = Math.max(viewBox[3] || 1000, 1);
+      const graphRatio = graphWidth / graphHeight;
+
+      // Choose page orientation from the diagram, then uniformly scale the whole
+      // SVG with one scale factor. Never set width and height independently.
+      const orientation = options.orientation && options.orientation !== "auto"
+        ? options.orientation
+        : (graphRatio > 1.08 ? "landscape" : "portrait");
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation, unit: "pt", format: options.pageSize || "a4", compress: true });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const sideMargin = Number.isFinite(Number(options.margin)) ? Number(options.margin) : 34;
+      const titleHeight = title ? 54 : 18;
+      const usableWidth = pageWidth - sideMargin * 2;
+      const usableHeight = pageHeight - titleHeight - 26;
+      const fitScale = Math.min(usableWidth / graphWidth, usableHeight / graphHeight);
+      const requestedScale = options.scale && options.scale !== "fit" ? Number(options.scale) : null;
+      const scale = requestedScale ? Math.min(fitScale * requestedScale, fitScale * 1.5) : fitScale;
+      const exportWidth = graphWidth * scale;
+      const exportHeight = graphHeight * scale;
+      const x = (pageWidth - exportWidth) / 2;
+      const y = titleHeight + Math.max(0, (usableHeight - exportHeight) / 2);
+
+      if (title) {
+        pdf.setTextColor(11, 37, 69);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(20);
+        pdf.text(title, pageWidth / 2, 31, { align: "center", maxWidth: usableWidth });
+      }
+
+      await pdf.svg(clone, { x, y, width: exportWidth, height: exportHeight });
+      return pdf.output("blob");
+    }
+
+    async function exportVisibleGraphToSvg() {
+      const svg = graphContainer.querySelector("svg");
+      if (!svg) throw new Error("No flowchart is available to export.");
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      const clone = svg.cloneNode(true);
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.querySelectorAll("text, tspan").forEach(el => el.setAttribute("font-family", "Arial, Helvetica, sans-serif"));
+      return new Blob([new XMLSerializer().serializeToString(clone)], {type:"image/svg+xml;charset=utf-8"});
+    }
+
+    async function exportVisibleGraphToPng(scale = 2) {
+      const svgBlob = await exportVisibleGraphToSvg();
+      const svgUrl = URL.createObjectURL(svgBlob);
+      try {
+        const img = new Image();
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = svgUrl; });
+        const svg = graphContainer.querySelector("svg");
+        const box = (svg.getAttribute("viewBox") || `0 0 ${img.width || 1000} ${img.height || 1000}`).split(/\s+/).map(Number);
+        const canvasOut = document.createElement("canvas");
+        canvasOut.width = Math.max(1, Math.round((box[2] || img.width) * scale));
+        canvasOut.height = Math.max(1, Math.round((box[3] || img.height) * scale));
+        const outCtx = canvasOut.getContext("2d");
+        outCtx.fillStyle = "#ffffff";
+        outCtx.fillRect(0,0,canvasOut.width,canvasOut.height);
+        outCtx.drawImage(img,0,0,canvasOut.width,canvasOut.height);
+        return await new Promise(resolve => canvasOut.toBlob(resolve,"image/png"));
+      } finally { URL.revokeObjectURL(svgUrl); }
+    }
+
+    async function createExportBlob(options) {
+      if (options.format === "svg") return exportVisibleGraphToSvg();
+      if (options.format === "png") return exportVisibleGraphToPng(options.scale === "fit" ? 2 : Math.max(1, Number(options.scale) * 2));
+      return exportVisibleGraphToPdf(currentTitle || "Flowchart", options);
+    }
+
+
+    // ---------- Part 2 editor MVP ----------
+    let selectedEditorItem = null;
+    let undoStack = [];
+    let redoStack = [];
+
+    function graphSnapshot() { return JSON.stringify(currentGraph); }
+    function pushUndo() {
+      undoStack.push(graphSnapshot());
+      if (undoStack.length > 50) undoStack.shift();
+      redoStack = [];
+    }
+    async function restoreSnapshot(snapshot) {
+      currentGraph = JSON.parse(snapshot);
+      selectedEditorItem = null;
+      await renderLiveGraph(currentGraph);
+      showEmptyProperties();
+    }
+    function nodeSafeId(id) { return "n" + String(id).replace(/[^a-zA-Z0-9]/g, ""); }
+    function nodeById(id) { return (currentGraph.nodes || []).find(node => String(node.id) === String(id)); }
+    function ensureMetadata(item) {
+      item.metadata = item.metadata || {};
+      item.metadata.editor_style = item.metadata.editor_style || {};
+      return item.metadata.editor_style;
+    }
+    function applyEditorNodeSizing() {
+      const svg = graphContainer.querySelector("svg");
+      if (!svg) return;
+      (currentGraph.nodes || []).forEach(node => {
+        const size = node.metadata && node.metadata.editor_style ? Number(node.metadata.editor_style.scale || 1) : 1;
+        const group = svg.querySelector(`g.node[id*="${CSS.escape(nodeSafeId(node.id))}"]`);
+        if (group && size !== 1) {
+          const box = group.getBBox();
+          const cx = box.x + box.width / 2;
+          const cy = box.y + box.height / 2;
+          group.setAttribute("transform", `translate(${cx} ${cy}) scale(${size}) translate(${-cx} ${-cy})`);
+        }
+      });
+    }
+
+    function applyEditorEdgeShapes() {
+      const paths = [...graphContainer.querySelectorAll(".edgePath path")];
+      paths.forEach((path, index) => {
+        const edge = (currentGraph.edges || [])[index];
+        if (!edge) return;
+        const style = edge.metadata && edge.metadata.editor_style ? edge.metadata.editor_style : {};
+        if (style.arrow === "both") {
+          const markerEnd = path.getAttribute("marker-end");
+          if (markerEnd) path.setAttribute("marker-start", markerEnd);
+        } else {
+          path.removeAttribute("marker-start");
+        }
+        const curve = style.curve || "default";
+        if (curve === "default" || curve === "basis") return;
+        try {
+          const length = path.getTotalLength();
+          const start = path.getPointAtLength(0);
+          const end = path.getPointAtLength(length);
+          if (curve === "linear") {
+            path.setAttribute("d", `M ${start.x} ${start.y} L ${end.x} ${end.y}`);
+          } else if (curve === "step") {
+            const middleY = (start.y + end.y) / 2;
+            path.setAttribute("d", `M ${start.x} ${start.y} L ${start.x} ${middleY} L ${end.x} ${middleY} L ${end.x} ${end.y}`);
+          }
+        } catch (_) { /* Keep Mermaid's original route if geometry is unavailable. */ }
+      });
+    }
+
+    function showEmptyProperties() {
+      propertyContent.className = "editor-empty";
+      propertyContent.innerHTML = "Select a node or connection to edit it.";
+    }
+    function selectSvgElement(element) {
+      graphContainer.querySelectorAll(".editor-selected").forEach(el => el.classList.remove("editor-selected"));
+      if (element) element.classList.add("editor-selected");
+    }
+    function identifyNodeFromGroup(group) {
+      const id = group.id || "";
+      return (currentGraph.nodes || []).find(node => id.includes(nodeSafeId(node.id))) || null;
+    }
+    function identifyEdgeFromPath(path) {
+      const parent = path.closest(".edgePath") || path.parentElement;
+      const id = (path.id || "") + " " + (parent && parent.id || "");
+      return (currentGraph.edges || []).find((edge, index) =>
+        id.includes(nodeSafeId(edge.from)) && id.includes(nodeSafeId(edge.to))
+      ) || null;
+    }
+    function attachEditorInteractions() {
+      graphContainer.classList.add("editor-mode");
+      graphContainer.querySelectorAll("g.node").forEach(group => {
+        group.addEventListener("click", event => {
+          event.stopPropagation();
+          const node = identifyNodeFromGroup(group);
+          if (!node) return;
+          selectedEditorItem = { kind: "node", item: node };
+          selectSvgElement(group);
+          renderNodeProperties(node);
+        });
+      });
+      graphContainer.querySelectorAll(".edgePath path").forEach(path => {
+        path.style.pointerEvents = "stroke";
+        path.addEventListener("click", event => {
+          event.stopPropagation();
+          const edge = identifyEdgeFromPath(path);
+          if (!edge) return;
+          selectedEditorItem = { kind: "edge", item: edge };
+          selectSvgElement(path.closest(".edgePath") || path);
+          renderEdgeProperties(edge);
+        });
+      });
+      graphContainer.onclick = () => { selectedEditorItem = null; selectSvgElement(null); showEmptyProperties(); };
+    }
+    let editorRenderTimer = null;
+    let lastUndoAt = 0;
+    function scheduleEditorRender(delay = 90) {
+      clearTimeout(editorRenderTimer);
+      editorRenderTimer = setTimeout(() => renderLiveGraph(currentGraph), delay);
+    }
+    async function updateAndRender(mutator, immediate = false) {
+      const now = Date.now();
+      if (now - lastUndoAt > 450) { pushUndo(); lastUndoAt = now; }
+      mutator();
+      if (immediate) await renderLiveGraph(currentGraph);
+      else scheduleEditorRender();
+      scheduleAutosave();
+    }
+    function field(label, inputHtml) { return `<label class="field">${label}${inputHtml}</label>`; }
+    function renderNodeProperties(node) {
+      const style = ensureMetadata(node);
+      propertyContent.className = "";
+      propertyContent.innerHTML =
+        field("Text", `<textarea id="nodeText" rows="3">${String(node.label || "").replace(/</g,"&lt;")}</textarea>`) +
+        field("Shape", `<select id="nodeShape"><option value="process">Rectangle</option><option value="rounded">Rounded rectangle</option><option value="circle">Circle</option><option value="input_output">Parallelogram</option><option value="decision">Diamond</option><option value="start">Oval / Start</option><option value="end">Oval / End</option></select>`) +
+        `<div class="field-row">${field("Fill", `<input id="nodeFill" type="color" value="${style.fill || '#ffffff'}">`)}${field("Border", `<input id="nodeStroke" type="color" value="${style.stroke || '#0b2545'}">`)}</div>` +
+        `<div class="field-row">${field("Text color", `<input id="nodeTextColor" type="color" value="${style.textColor || '#13293d'}">`)}${field("Font size", `<input id="nodeFontSize" type="number" min="8" max="36" value="${style.fontSize || 14}">`)}</div>` +
+        field("Font", `<select id="nodeFont"><option value="Arial">Arial</option><option value="Helvetica">Helvetica</option><option value="Georgia">Georgia</option><option value="Courier New">Courier New</option></select>`) +
+        `<div class="field-row">${field("Border width", `<input id="nodeBorderWidth" type="number" min="1" max="8" value="${style.strokeWidth || 1.5}" step="0.5">`)}${field("Size", `<input id="nodeScale" type="range" min="0.75" max="1.5" value="${style.scale || 1}" step="0.05">`)}</div>` +
+        `<button type="button" id="deleteNodeBtn">Delete node</button>`;
+      document.getElementById("nodeShape").value = style.customShape || node.type || "process";
+      document.getElementById("nodeFont").value = style.fontFamily || "Arial";
+      const commit = async () => {
+        await updateAndRender(() => {
+          node.label = document.getElementById("nodeText").value.trim() || "Untitled step";
+          const selectedShape = document.getElementById("nodeShape").value;
+          const st = ensureMetadata(node);
+          st.customShape = ["rounded","circle"].includes(selectedShape) ? selectedShape : "";
+          node.type = ["rounded","circle"].includes(selectedShape) ? "process" : selectedShape;
+          st.fill = document.getElementById("nodeFill").value;
+          st.stroke = document.getElementById("nodeStroke").value;
+          st.textColor = document.getElementById("nodeTextColor").value;
+          st.fontSize = Number(document.getElementById("nodeFontSize").value);
+          st.fontFamily = document.getElementById("nodeFont").value;
+          st.strokeWidth = Number(document.getElementById("nodeBorderWidth").value);
+          st.scale = Number(document.getElementById("nodeScale").value);
+        });
+        selectedEditorItem = {kind:"node", item: nodeById(node.id)};
+      };
+      ["nodeText","nodeShape","nodeFill","nodeStroke","nodeTextColor","nodeFontSize","nodeFont","nodeBorderWidth","nodeScale"].forEach(id => {
+        document.getElementById(id).addEventListener("input", commit);
+      });
+      document.getElementById("deleteNodeBtn").onclick = async () => {
+        await updateAndRender(() => {
+          currentGraph.nodes = currentGraph.nodes.filter(n => n.id !== node.id);
+          currentGraph.edges = currentGraph.edges.filter(e => e.from !== node.id && e.to !== node.id);
+        });
+        selectedEditorItem = null; showEmptyProperties();
+      };
+    }
+    function renderEdgeProperties(edge) {
+      const style = ensureMetadata(edge);
+      propertyContent.className = "";
+      propertyContent.innerHTML =
+        field("Label", `<input id="edgeLabel" value="${String(edge.label || "").replace(/"/g,"&quot;")}">`) +
+        `<div class="field-row">${field("Color", `<input id="edgeColor" type="color" value="${style.stroke || '#0b2545'}">`)}${field("Thickness", `<input id="edgeWidth" type="number" min="1" max="8" value="${style.strokeWidth || 2}" step="0.5">`)}</div>` +
+        field("Line pattern", `<select id="edgePattern"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select>`) +
+        field("Line shape", `<select id="edgeCurve"><option value="default">Automatic curve</option><option value="linear">Straight</option><option value="step">Elbow / step</option><option value="basis">Smooth curve</option></select>`) +
+        field("Arrowheads", `<select id="edgeArrow"><option value="arrow">End arrow</option><option value="both">Both ends</option><option value="none">No arrow</option></select>`) +
+        `<button type="button" id="deleteEdgeBtn">Delete connection</button>`;
+      document.getElementById("edgePattern").value = style.pattern || "solid";
+      document.getElementById("edgeArrow").value = style.arrow || "arrow";
+      document.getElementById("edgeCurve").value = style.curve || "default";
+      const commit = async () => {
+        await updateAndRender(() => {
+          edge.label = document.getElementById("edgeLabel").value.trim();
+          const st = ensureMetadata(edge);
+          st.stroke = document.getElementById("edgeColor").value;
+          st.strokeWidth = Number(document.getElementById("edgeWidth").value);
+          st.pattern = document.getElementById("edgePattern").value;
+          st.curve = document.getElementById("edgeCurve").value;
+          st.arrow = document.getElementById("edgeArrow").value;
+        });
+      };
+      ["edgeLabel","edgeColor","edgeWidth","edgePattern","edgeCurve","edgeArrow"].forEach(id => document.getElementById(id).addEventListener("input", commit));
+      document.getElementById("deleteEdgeBtn").onclick = async () => {
+        await updateAndRender(() => { currentGraph.edges = currentGraph.edges.filter(e => e !== edge); });
+        selectedEditorItem = null; showEmptyProperties();
+      };
+    }
+    function openEditor() {
+      editorShell.classList.add("active");
+      document.getElementById("editorCanvasWrap").appendChild(graphContainer);
+      graphContainer.classList.add("editor-mode");
+      editorTitleInput.value = currentTitle || "Flowchart";
+      attachEditorInteractions();
+      showEmptyProperties();
+      editFlowchartBtn.textContent = "Editing";
+    }
+    function restoreGraphPresentation() {
+      if (graphContainer.parentElement !== liveGraphSection) {
+        liveGraphSection.insertBefore(graphContainer, editorShell);
+      }
+    }
+    document.getElementById("finishEditBtn").onclick = () => {
+      selectedEditorItem = null; selectSvgElement(null); showEmptyProperties();
+      restoreGraphPresentation();
+      editorShell.classList.remove("active");
+      graphContainer.classList.remove("editor-mode");
+      editFlowchartBtn.textContent = "Edit";
+      status.textContent = "Edits are saved in the live flowchart. Use Download to export.";
+    };
+    editFlowchartBtn.onclick = () => {
+      if (editorShell.classList.contains("active")) document.getElementById("finishEditBtn").click();
+      else openEditor();
+    };
+    editorTitleInput.addEventListener("input", () => {
+      currentTitle = editorTitleInput.value.trim() || "Untitled Flowchart";
+      currentGraph.title = currentTitle;
+      liveTitle.textContent = currentTitle;
+    });
+    document.getElementById("undoBtn").onclick = async () => {
+      if (!undoStack.length) return;
+      redoStack.push(graphSnapshot());
+      await restoreSnapshot(undoStack.pop());
+    };
+    document.getElementById("redoBtn").onclick = async () => {
+      if (!redoStack.length) return;
+      undoStack.push(graphSnapshot());
+      await restoreSnapshot(redoStack.pop());
+    };
+    document.getElementById("addNodeBtn").onclick = async () => {
+      const id = "custom_" + Date.now();
+      await updateAndRender(() => {
+        const lastPhase = (currentGraph.phases || []).slice(-1)[0] || "Workflow";
+        currentGraph.nodes.push({id, label:"New step", type:"process", phase:lastPhase, metadata:{editor_style:{}}});
+      });
+    };
+    let aiProgressTimer = null;
+    let aiProgressStartedAt = 0;
+    function startAiEditProgress() {
+      aiProgressStartedAt = performance.now();
+      aiEditProgress.classList.add("active");
+      aiEditProgress.setAttribute("aria-hidden", "false");
+      const refresh = () => {
+        const seconds = (performance.now() - aiProgressStartedAt) / 1000;
+        aiProgressTime.textContent = `${seconds.toFixed(1)}s`;
+        if (seconds < 2.5) aiProgressLabel.textContent = "Reading your instruction…";
+        else if (seconds < 7) aiProgressLabel.textContent = "Planning the graph change…";
+        else if (seconds < 13) aiProgressLabel.textContent = "Updating nodes and connections…";
+        else aiProgressLabel.textContent = "Still working on this edit…";
+      };
+      refresh();
+      aiProgressTimer = setInterval(refresh, 100);
+    }
+    function stopAiEditProgress() {
+      clearInterval(aiProgressTimer);
+      aiProgressTimer = null;
+      aiEditProgress.classList.remove("active");
+      aiEditProgress.setAttribute("aria-hidden", "true");
+    }
+    aiEditBtn.onclick = async () => {
+      const instruction = aiEditInput.value.trim();
+      if (!instruction) return;
+      aiEditBtn.disabled = true;
+      aiEditBtn.textContent = "Applying…";
+      aiEditInput.disabled = true;
+      aiEditStatus.textContent = "";
+      startAiEditProgress();
+      try {
+        pushUndo();
+        const response = await fetch("/ai_edit", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({graph:currentGraph, instruction})});
+        const data = await response.json();
+        if (!response.ok || data.error) throw new Error(data.error || "AI edit failed");
+        currentGraph = data.graph;
+        await renderLiveGraph(currentGraph);
+        scheduleAutosave();
+        aiEditInput.value = "";
+        const elapsed = Number(data.elapsed_ms) > 0 ? Number(data.elapsed_ms) / 1000 : (performance.now() - aiProgressStartedAt) / 1000;
+        aiEditStatus.textContent = `AI edit applied in ${elapsed.toFixed(1)} seconds.`;
+      } catch (err) {
+        aiEditStatus.textContent = err.message;
+      } finally {
+        const progressVisibleMs = performance.now() - aiProgressStartedAt;
+        if (progressVisibleMs < 900) {
+          await new Promise(resolve => setTimeout(resolve, 900 - progressVisibleMs));
+        }
+        stopAiEditProgress();
+        aiEditBtn.disabled = false;
+        aiEditBtn.textContent = "Apply change";
+        aiEditInput.disabled = false;
+        aiEditInput.focus();
+      }
+    };
+    aiEditInput.addEventListener("keydown", event => { if (event.key === "Enter") aiEditBtn.click(); });
+
+    // ---------- Authentication, saved designs, and exports ----------
+    function setAuthUi(loggedIn, username = null) {
+      isLoggedIn = loggedIn;
+      workspaceNav.classList.toggle("hidden", !loggedIn);
+      myDesignsNav.classList.toggle("hidden", !loggedIn);
+      accountNav.classList.toggle("visible", loggedIn);
+      saveDesignBtn.classList.toggle("visible", loggedIn);
+      if (!loggedIn) autosaveIndicator.textContent = "";
+      accountNav.textContent = username || "Account";
+      loginNavBtn.textContent = loggedIn ? "Logout" : "Login";
+      loginNavBtn.classList.toggle("logout-action", loggedIn);
+      document.getElementById("landingSignupBtn").classList.toggle("hidden", loggedIn);
+      document.getElementById("landingLoginBtn").textContent = loggedIn ? "Open workspace" : "Log in";
+      if (!loggedIn && ["home", "designs", "account"].some(page => document.getElementById(`page-${page}`).classList.contains("active"))) {
+        showPage("landing");
+      }
+    }
+    async function refreshAuthStatus() {
+      try {
+        const response = await fetch("/auth/status");
+        const data = await response.json();
+        setAuthUi(Boolean(data.logged_in), data.user?.username || data.user?.email);
+      } catch (_) { setAuthUi(false); }
+    }
+    let authMode = "login";
+    const syncAuthMode = () => {
+      const signingUp = authMode === "signup";
+      document.getElementById("loginHeading").textContent = signingUp ? "Create your account" : "Welcome back";
+      document.getElementById("authSubtitle").textContent = signingUp
+        ? "Create an account to build, edit, save, and revisit every workflow you explain."
+        : "Continue building diagrams from the way you naturally explain ideas.";
+      document.getElementById("submitLoginBtn").textContent = signingUp ? "Create account" : "Log in";
+      document.getElementById("toggleAuthModeBtn").textContent = signingUp ? "Already have an account? Log in" : "New here? Create an account";
+      document.querySelectorAll(".signup-only").forEach(el => el.classList.toggle("hidden", !signingUp));
+      document.querySelectorAll(".login-only").forEach(el => el.classList.toggle("hidden", signingUp));
+      document.getElementById("loginPassword").autocomplete = signingUp ? "new-password" : "current-password";
+      document.getElementById("loginStatus").style.color = "#9b2c2c";
+      document.getElementById("loginStatus").textContent = "";
+    };
+    function openAuthModal(mode = "login") {
+      authMode = mode;
+      syncAuthMode();
+      loginModal.classList.add("active");
+      const target = mode === "signup" ? document.getElementById("signupUsername") : document.getElementById("loginEmail");
+      target.focus();
+    }
+    document.getElementById("landingLoginBtn").onclick = () => isLoggedIn ? showPage("home") : openAuthModal("login");
+    document.getElementById("landingSignupBtn").onclick = () => openAuthModal("signup");
+    document.getElementById("authPrivacyLink").onclick = () => {
+      loginModal.classList.remove("active");
+      showPage("privacy");
+    };
+    loginNavBtn.onclick = async () => {
+      if (isLoggedIn) {
+        await fetch("/logout", {method:"POST"});
+        resetToStart();
+        document.getElementById("designGrid").innerHTML = "";
+        document.getElementById("designUsage").textContent = "0 of 3 designs";
+        document.getElementById("designsMessage").textContent = "Log in to view saved designs.";
+        setAuthUi(false);
+        showPage("landing");
+      } else {
+        openAuthModal("login");
+      }
+    };
+    document.getElementById("cancelLoginBtn").onclick = () => loginModal.classList.remove("active");
+    document.getElementById("toggleAuthModeBtn").onclick = () => { authMode = authMode === "login" ? "signup" : "login"; syncAuthMode(); };
+    document.getElementById("submitLoginBtn").onclick = async () => {
+      const button = document.getElementById("submitLoginBtn"); button.disabled = true;
+      try {
+        const endpoint = authMode === "signup" ? "/signup" : "/login";
+        const payload = {
+          email: document.getElementById("loginEmail").value,
+          password: document.getElementById("loginPassword").value,
+          username: document.getElementById("signupUsername")?.value || ""
+        };
+        const response = await fetch(endpoint, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Authentication failed");
+        if (data.logged_in) {
+          // Authentication is a hard workspace boundary. Never carry a graph,
+          // transcript, undo history, or autosave target into another account.
+          resetToStart();
+          setAuthUi(true, data.user?.username || data.user?.email);
+          loginModal.classList.remove("active");
+          showPage("home");
+          status.textContent = "You’re signed in. Start talking when you’re ready.";
+        } else {
+          document.getElementById("loginStatus").style.color = "#276749";
+          document.getElementById("loginStatus").textContent = data.message || "Check your email to confirm your account.";
+          authMode = "login";
+        }
+        document.getElementById("loginPassword").value = "";
+      } catch (err) {
+        document.getElementById("loginStatus").style.color = "#9b2c2c";
+        document.getElementById("loginStatus").textContent = err.message;
+      } finally { button.disabled = false; }
+    };
+    document.getElementById("loginPassword").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("submitLoginBtn").click(); });
+
+    function scheduleAutosave(delay = 1400) {
+      if (!isLoggedIn || !currentDesignId || !(currentGraph.nodes || []).length) return;
+      clearTimeout(autosaveTimer);
+      autosaveIndicator.textContent = "Unsaved";
+      autosaveTimer = setTimeout(() => saveCurrentDesign(true), delay);
+    }
+
+    async function loadProfile() {
+      if (!isLoggedIn) return;
+      const profileStatus = document.getElementById("profileStatus");
+      profileStatus.textContent = "Loading…";
+      try {
+        const response = await fetch("/profile");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load profile");
+        const profile = data.profile;
+        document.getElementById("accountEmail").value = profile.email || "";
+        document.getElementById("accountUsername").value = profile.username || "";
+        document.getElementById("accountDisplayName").value = profile.display_name || "";
+        document.getElementById("accountPlan").textContent = (profile.plan || "free").replace(/^./, c => c.toUpperCase());
+        profileStatus.textContent = "";
+      } catch (err) { profileStatus.textContent = err.message; }
+    }
+    document.getElementById("saveProfileBtn").onclick = async () => {
+      const statusEl = document.getElementById("profileStatus");
+      statusEl.textContent = "Saving…";
+      try {
+        const response = await fetch("/profile", {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username:document.getElementById("accountUsername").value,display_name:document.getElementById("accountDisplayName").value})});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not save profile");
+        statusEl.textContent = "Profile saved.";
+        loginNavBtn.textContent = `Logout (${data.profile.username || "Account"})`;
+      } catch (err) { statusEl.textContent = err.message; }
+    };
+
+    document.getElementById("forgotPasswordBtn").onclick = async () => {
+      const email = document.getElementById("loginEmail").value.trim();
+      const statusEl = document.getElementById("loginStatus");
+      if (!email) { statusEl.textContent = "Enter your email first."; return; }
+      try {
+        const response = await fetch("/auth/reset-password", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email})});
+        const data = await response.json();
+        statusEl.style.color = response.ok ? "#276749" : "#9b2c2c";
+        statusEl.textContent = data.message || data.error;
+      } catch (err) { statusEl.textContent = err.message; }
+    };
+
+    function detectPasswordRecovery() {
+      const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const query = new URLSearchParams(window.location.search);
+      const accessToken = fragment.get("access_token");
+      const refreshToken = fragment.get("refresh_token");
+      const isRecovery = fragment.get("type") === "recovery" || query.get("reset") === "1";
+      if (!isRecovery) return;
+      history.replaceState({}, document.title, window.location.pathname);
+      if (!accessToken || !refreshToken) {
+        notify("This password-reset link is invalid or expired. Request a new one.", "error", 7000);
+        return;
+      }
+      pendingResetTokens = {access_token: accessToken, refresh_token: refreshToken};
+      document.getElementById("newPasswordInput").value = "";
+      document.getElementById("confirmNewPasswordInput").value = "";
+      document.getElementById("resetPasswordStatus").textContent = "";
+      resetPasswordModal.classList.add("active");
+      document.getElementById("newPasswordInput").focus();
+    }
+
+    document.getElementById("cancelResetPasswordBtn").onclick = () => {
+      pendingResetTokens = null;
+      resetPasswordModal.classList.remove("active");
+      notify("Password reset cancelled. Request another link if needed.");
+    };
+    document.getElementById("completeResetPasswordBtn").onclick = async () => {
+      const password = document.getElementById("newPasswordInput").value;
+      const confirmation = document.getElementById("confirmNewPasswordInput").value;
+      const resetStatus = document.getElementById("resetPasswordStatus");
+      if (password.length < 10) { resetStatus.textContent = "Use at least 10 characters."; return; }
+      if (password !== confirmation) { resetStatus.textContent = "The passwords do not match."; return; }
+      if (!pendingResetTokens) { resetStatus.textContent = "This reset link is no longer available."; return; }
+      const button = document.getElementById("completeResetPasswordBtn");
+      button.disabled = true;
+      button.textContent = "Updating…";
+      resetStatus.textContent = "Updating password…";
+      try {
+        const response = await fetch("/auth/complete-reset", {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({...pendingResetTokens, password})
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not update password");
+        pendingResetTokens = null;
+        resetPasswordModal.classList.remove("active");
+        notify(data.message || "Password updated.", "success", 6500);
+        openAuthModal("login");
+      } catch (err) {
+        resetStatus.textContent = err.message;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Update password";
+      }
+    };
+    document.getElementById("confirmNewPasswordInput").addEventListener("keydown", event => {
+      if (event.key === "Enter") document.getElementById("completeResetPasswordBtn").click();
+    });
+    detectPasswordRecovery();
+
+    async function saveCurrentDesign(silent = false) {
+      if (!isLoggedIn || !(currentGraph.nodes || []).length) return;
+      if (autosaveInFlight) return; autosaveInFlight = true;
+      saveDesignBtn.disabled = true; if (!silent) status.textContent = "Saving design…"; autosaveIndicator.textContent = "Saving…";
+      try {
+        const response = await fetch("/designs", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id:currentDesignId,title:currentTitle,graph:currentGraph,transcript:savedTranscript})});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not save design");
+        currentDesignId = data.design.id; if (!silent) status.textContent = "Design saved."; autosaveIndicator.textContent = "Saved";
+      } catch (err) { status.textContent = err.message; autosaveIndicator.textContent = "Save failed"; }
+      finally { saveDesignBtn.disabled = false; autosaveInFlight = false; }
+    }
+    saveDesignBtn.onclick = saveCurrentDesign;
+
+    async function renderDesignPreview(container, graph, designId) {
+      if (!graph || !(graph.nodes || []).length) {
+        container.innerHTML = '<span class="design-preview-empty">No flowchart preview available</span>';
+        return;
+      }
+      if (!mermaidReady) {
+        await new Promise(resolve => {
+          const timer = setInterval(() => {
+            if (mermaidReady) { clearInterval(timer); resolve(); }
+          }, 50);
+        });
+      }
+      try {
+        const previewId = "designpreview" + String(designId).replace(/[^a-zA-Z0-9]/g, "") + Date.now();
+        const { svg } = await mermaid.render(previewId, graphToMermaid(graph));
+        container.innerHTML = svg;
+        const previewSvg = container.querySelector("svg");
+        if (previewSvg) {
+          previewSvg.removeAttribute("width");
+          previewSvg.removeAttribute("height");
+          previewSvg.setAttribute("aria-hidden", "true");
+        }
+      } catch (err) {
+        console.error("Design preview failed:", err);
+        container.innerHTML = '<span class="design-preview-empty">Preview unavailable</span>';
+      }
+    }
+
+    async function loadDesigns() {
+      const grid = document.getElementById("designGrid");
+      const message = document.getElementById("designsMessage");
+      grid.innerHTML = "";
+      if (!isLoggedIn) { message.textContent = "Log in to view saved designs."; return; }
+      message.textContent = "Loading designs…";
+      try {
+        const response = await fetch("/designs"); const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load designs");
+        const usage = data.usage || {used:data.designs.length, limit:3, remaining:Math.max(0, 3 - data.designs.length)};
+        document.getElementById("designUsage").textContent = `${usage.used} of ${usage.limit} designs`;
+        message.textContent = data.designs.length ? "" : "No saved designs yet.";
+        data.designs.forEach(design => {
+          const card = document.createElement("article"); card.className = "design-card";
+          const date = design.updated_at ? new Date(design.updated_at).toLocaleString() : "";
+          card.innerHTML = `<h3></h3><small></small><div class="design-preview"><div class="design-preview-canvas"></div><div class="design-card-actions"><button type="button" class="open-design">Open</button><button type="button" class="rename-design">Rename</button><button type="button" class="duplicate-design">Duplicate</button><button type="button" class="versions-design">Versions</button><button type="button" class="delete-design">Delete</button></div></div>`;
+          card.querySelector("h3").textContent = design.title; card.querySelector("small").textContent = date;
+          card.querySelector(".open-design").onclick = () => openSavedDesign(design.id);
+          card.querySelector(".rename-design").onclick = () => openRenameDesignDialog(design);
+          card.querySelector(".duplicate-design").onclick = async () => {
+            const duplicateResponse = await fetch(`/designs/${design.id}/duplicate`, {method:"POST"});
+            const duplicateData = await duplicateResponse.json();
+            if (!duplicateResponse.ok) return notify(duplicateData.error || "Could not duplicate design", "error");
+            notify("Design duplicated.", "success");
+            await loadDesigns();
+          };
+          card.querySelector(".versions-design").onclick = () => openVersions(design.id);
+          card.querySelector(".delete-design").onclick = () => openDeleteDesignDialog(design);
+          grid.appendChild(card);
+          renderDesignPreview(card.querySelector(".design-preview-canvas"), design.preview_graph, design.id);
+        });
+      } catch (err) { message.textContent = err.message; }
+    }
+
+    function closeDeleteDesignDialog() {
+      if (document.getElementById("confirmDeleteDesignBtn").disabled) return;
+      deleteDesignModal.classList.remove("active");
+      deleteDesignTarget = null;
+      document.getElementById("deleteDesignStatus").textContent = "";
+    }
+
+    function openDeleteDesignDialog(design) {
+      deleteDesignTarget = {id: design.id, title: design.title || "Untitled Flowchart"};
+      document.getElementById("deleteDesignName").textContent = deleteDesignTarget.title;
+      document.getElementById("deleteDesignStatus").textContent = "";
+      deleteDesignModal.classList.add("active");
+      document.getElementById("cancelDeleteDesignBtn").focus();
+    }
+
+    document.getElementById("cancelDeleteDesignBtn").onclick = closeDeleteDesignDialog;
+    deleteDesignModal.addEventListener("click", event => {
+      if (event.target === deleteDesignModal) closeDeleteDesignDialog();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && deleteDesignModal.classList.contains("active")) closeDeleteDesignDialog();
+    });
+    document.getElementById("confirmDeleteDesignBtn").onclick = async () => {
+      if (!deleteDesignTarget) return;
+      const target = {...deleteDesignTarget};
+      const confirmButton = document.getElementById("confirmDeleteDesignBtn");
+      const cancelButton = document.getElementById("cancelDeleteDesignBtn");
+      const dialogStatus = document.getElementById("deleteDesignStatus");
+      confirmButton.disabled = true;
+      cancelButton.disabled = true;
+      confirmButton.textContent = "Deleting…";
+      dialogStatus.textContent = "Deleting design…";
+      try {
+        const response = await fetch(`/designs/${encodeURIComponent(target.id)}`, {method:"DELETE"});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not delete design");
+        if (String(currentDesignId) === String(target.id)) resetToStart();
+        deleteDesignTarget = null;
+        deleteDesignModal.classList.remove("active");
+        await loadDesigns();
+      } catch (err) {
+        dialogStatus.textContent = err.message;
+      } finally {
+        confirmButton.disabled = false;
+        cancelButton.disabled = false;
+        confirmButton.textContent = "Delete permanently";
+      }
+    };
+
+    function closeRenameDesignDialog() {
+      if (document.getElementById("confirmRenameDesignBtn").disabled) return;
+      renameDesignModal.classList.remove("active");
+      renameDesignTarget = null;
+      document.getElementById("renameDesignStatus").textContent = "";
+    }
+
+    function openRenameDesignDialog(design) {
+      renameDesignTarget = {id: design.id, title: design.title || "Untitled Flowchart"};
+      const input = document.getElementById("renameDesignInput");
+      input.value = renameDesignTarget.title;
+      document.getElementById("renameDesignStatus").textContent = "";
+      renameDesignModal.classList.add("active");
+      input.focus();
+      input.select();
+    }
+
+    document.getElementById("cancelRenameDesignBtn").onclick = closeRenameDesignDialog;
+    renameDesignModal.addEventListener("click", event => {
+      if (event.target === renameDesignModal) closeRenameDesignDialog();
+    });
+    document.getElementById("renameDesignInput").addEventListener("keydown", event => {
+      if (event.key === "Enter") document.getElementById("confirmRenameDesignBtn").click();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && renameDesignModal.classList.contains("active")) closeRenameDesignDialog();
+    });
+    document.getElementById("confirmRenameDesignBtn").onclick = async () => {
+      if (!renameDesignTarget) return;
+      const title = document.getElementById("renameDesignInput").value.trim();
+      const dialogStatus = document.getElementById("renameDesignStatus");
+      if (!title) {
+        dialogStatus.textContent = "Enter a name for this design.";
+        document.getElementById("renameDesignInput").focus();
+        return;
+      }
+      const target = {...renameDesignTarget};
+      const confirmButton = document.getElementById("confirmRenameDesignBtn");
+      const cancelButton = document.getElementById("cancelRenameDesignBtn");
+      confirmButton.disabled = true;
+      cancelButton.disabled = true;
+      confirmButton.textContent = "Saving…";
+      dialogStatus.textContent = "Saving name…";
+      try {
+        const response = await fetch(`/designs/${encodeURIComponent(target.id)}`, {
+          method:"PATCH",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({title})
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not rename design");
+        if (String(currentDesignId) === String(target.id)) {
+          currentTitle = data.design.title;
+          liveTitle.textContent = currentTitle;
+          editorTitleInput.value = currentTitle;
+        }
+        renameDesignTarget = null;
+        renameDesignModal.classList.remove("active");
+        await loadDesigns();
+      } catch (err) {
+        dialogStatus.textContent = err.message;
+      } finally {
+        confirmButton.disabled = false;
+        cancelButton.disabled = false;
+        confirmButton.textContent = "Save name";
+      }
+    };
+    document.getElementById("refreshDesignsBtn").onclick = loadDesigns;
+    document.getElementById("newDesignBtn").onclick = () => {
+      currentDesignId = null; currentGraph = {nodes:[],edges:[]}; currentTitle = "Untitled Flowchart"; savedTranscript = "";
+      liveTitle.textContent = ""; liveGraphSection.classList.remove("active"); finalActions.classList.remove("active");
+      document.getElementById("page-home").classList.remove("workspace-active");
+      showPage("home"); status.textContent = "Start talking to create a new design.";
+    };
+
+    async function openVersions(designId) {
+      versionsDesignId = designId;
+      const list = document.getElementById("versionList");
+      list.textContent = "Loading versions…";
+      document.getElementById("versionsModal").classList.add("active");
+      try {
+        const response = await fetch(`/designs/${designId}/versions`); const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load versions");
+        list.innerHTML = data.versions.length ? "" : "No snapshots yet.";
+        data.versions.forEach(version => {
+          const row = document.createElement("div"); row.className = "version-row";
+          row.innerHTML = `<span>Version ${version.version_number}<br><small>${new Date(version.created_at).toLocaleString()}</small></span><button type="button">Open</button>`;
+          row.querySelector("button").onclick = async () => {
+            const r = await fetch(`/versions/${version.id}`); const d = await r.json();
+            if (!r.ok) return notify(d.error || "Could not load version", "error");
+            currentGraph = d.version.graph; savedTranscript = d.version.transcript || "";
+            document.getElementById("page-home").classList.add("workspace-active");
+            await renderLiveGraph(currentGraph); showPage("home"); document.getElementById("versionsModal").classList.remove("active"); status.textContent = `Opened version ${d.version.version_number}. Save to keep it.`;
+          };
+          list.appendChild(row);
+        });
+      } catch (err) { list.textContent = err.message; }
+    }
+    document.getElementById("closeVersionsBtn").onclick = () => document.getElementById("versionsModal").classList.remove("active");
+    document.getElementById("createVersionBtn").onclick = async () => {
+      if (!versionsDesignId) return;
+      await saveCurrentDesign(true);
+      const response = await fetch(`/designs/${versionsDesignId}/versions`, {method:"POST"}); const data = await response.json();
+      if (!response.ok) return notify(data.error || "Could not create snapshot", "error");
+      notify("Version snapshot created.", "success");
+      openVersions(versionsDesignId);
+    };
+
+    async function openSavedDesign(id) {
+      const response = await fetch(`/designs/${id}`); const data = await response.json();
+      if (!response.ok) { notify(data.error || "Could not open design", "error"); return; }
+      currentDesignId = data.design.id; currentGraph = data.design.graph; currentTitle = data.design.title || "Flowchart"; savedTranscript = data.design.transcript || "";
+      document.getElementById("page-home").classList.add("workspace-active");
+      liveTitle.textContent = currentTitle; liveGraphSection.classList.add("active"); finalActions.classList.add("active");
+      recordAgainBtn.style.display = "inline-block"; document.getElementById("liveGraphLabel").textContent = "Saved design";
+      await renderLiveGraph(currentGraph); showPage("home"); status.textContent = "Saved design loaded."; autosaveIndicator.textContent = "Saved";
+    }
+
+    exportBtn.onclick = () => exportModal.classList.add("active");
+    document.getElementById("cancelExportBtn").onclick = () => exportModal.classList.remove("active");
+    document.getElementById("confirmExportBtn").onclick = async () => {
+      const button = document.getElementById("confirmExportBtn"); button.disabled = true; status.textContent = "Preparing export…";
+      const options = {format:document.getElementById("exportFormat").value,pageSize:document.getElementById("exportPageSize").value,orientation:document.getElementById("exportOrientation").value,scale:document.getElementById("exportScale").value,margin:Number(document.getElementById("exportMargin").value)};
+      try {
+        const blob = await createExportBlob(options);
+        const filename = ((currentTitle || "flowchart").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "flowchart") + "." + options.format;
+        const url = URL.createObjectURL(blob); downloadLink.href = url; downloadLink.download = filename; downloadLink.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30000); exportModal.classList.remove("active"); status.textContent = "Export complete.";
+      } catch (err) { status.textContent = "Export failed: " + err.message; }
+      finally { button.disabled = false; }
+    };
+    refreshAuthStatus();
+
+    // ---------- Gesture detection ----------
+    let handLandmarker = null;
+    let detecting = false;
+    let recordStartTime = 0;
+    let gestureLog = [];
+
+    const HOLD_DURATION_MS = 500;
+    let currentPose = null;
+    let poseStartTime = null;
+    let lastConfirmedPose = null;
+
+    const HISTORY_WINDOW_MS = 500;
+    const MIN_SWIPE_DISTANCE = 0.35;
+    const SWIPE_COOLDOWN_MS = 800;
+    let positionHistory = [];
+    let lastSwipeTime = 0;
+
+    const CONNECTIONS = [
+      [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+      [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+      [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]
+    ];
+
+    function isExtended(landmarks, tipIdx, pipIdx, wristIdx = 0) {
+      const wrist = landmarks[wristIdx];
+      const tip = landmarks[tipIdx];
+      const pip = landmarks[pipIdx];
+      const distTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+      const distPip = Math.hypot(pip.x - wrist.x, pip.y - wrist.y);
+      return distTip > distPip * 1.15;
+    }
+
+    function classifyPose(landmarks) {
+      const thumb = isExtended(landmarks, 4, 2);
+      const index = isExtended(landmarks, 8, 6);
+      const middle = isExtended(landmarks, 12, 10);
+      const ring = isExtended(landmarks, 16, 14);
+      const pinky = isExtended(landmarks, 20, 18);
+      const extendedCount = [thumb, index, middle, ring, pinky].filter(Boolean).length;
+      if (extendedCount === 0) return "Closed Fist";
+      if (index && !middle && !ring && !pinky) return "Pointing";
+      if (thumb && !index && !middle && !ring && !pinky) return "Thumbs Up";
+      return null;
+    }
+
+    function isOpenPalm(landmarks) {
+      const thumb = isExtended(landmarks, 4, 2);
+      const index = isExtended(landmarks, 8, 6);
+      const middle = isExtended(landmarks, 12, 10);
+      const ring = isExtended(landmarks, 16, 14);
+      const pinky = isExtended(landmarks, 20, 18);
+      return [thumb, index, middle, ring, pinky].filter(Boolean).length >= 4;
+    }
+
+    function handCenterX(landmarks) {
+      const avg = landmarks.reduce((sum, p) => sum + p.x, 0) / landmarks.length;
+      return 1 - avg;
+    }
+
+    const BRANCH_HOLD_MS = 500;
+    const BRANCH_COOLDOWN_MS = 1000;
+    let branchHoldStart = null;
+    let lastBranchTime = 0;
+
+    let boxState = "IDLE";
+    let boxStateEnteredTime = 0;
+    let boxBaselineDistance = null;
+    let boxPeakDistance = null;
+    const BOX_MAX_DURATION_MS = 6000;
+    const BOX_SPREAD_THRESHOLD = 0.09;
+    const BOX_CLOSE_THRESHOLD = 0.18;
+    const BOX_CONFIRM_COOLDOWN_MS = 1200;
+    let lastBoxConfirmTime = 0;
+
+    function logGesture(gesture) {
+      const seconds = ((performance.now() - recordStartTime) / 1000).toFixed(1);
+      gestureLog.push({ gesture, time: parseFloat(seconds) });
+      gestureHint.textContent = `Detected: ${gesture} (${seconds}s)`;
+    }
+
+    async function loadModel() {
+      if (handLandmarker) return;
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+      );
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        },
+        runningMode: "VIDEO",
+        numHands: 2,
+      });
+    }
+
+    function detectLoop() {
+      if (!detecting) return;
+      const now = performance.now();
+      const results = handLandmarker.detectForVideo(video, now);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const hands = results.landmarks || [];
+
+      for (const landmarks of hands) {
+        ctx.strokeStyle = "#8DA9C4";
+        ctx.lineWidth = 2;
+        for (const [a, b] of CONNECTIONS) {
+          const p1 = landmarks[a], p2 = landmarks[b];
+          ctx.beginPath();
+          ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
+          ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#0B2545";
+        for (const point of landmarks) {
+          ctx.beginPath();
+          ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+
+      if (hands.length === 1) {
+        const landmarks = hands[0];
+        const pose = classifyPose(landmarks);
+        if (pose === null) {
+          currentPose = null; poseStartTime = null;
+        } else if (pose !== currentPose) {
+          currentPose = pose; poseStartTime = now; lastConfirmedPose = null;
+        } else {
+          const heldFor = now - poseStartTime;
+          if (heldFor >= HOLD_DURATION_MS && lastConfirmedPose !== pose) {
+            lastConfirmedPose = pose;
+            logGesture(pose);
+          }
+        }
+
+        const indexExtended = isExtended(landmarks, 8, 6);
+        if (indexExtended) {
+          const mirroredX = 1 - landmarks[8].x;
+          positionHistory.push({ x: mirroredX, t: now });
+          positionHistory = positionHistory.filter(p => now - p.t <= HISTORY_WINDOW_MS);
+          if (positionHistory.length >= 2 && now - lastSwipeTime >= SWIPE_COOLDOWN_MS) {
+            const delta = positionHistory[positionHistory.length - 1].x - positionHistory[0].x;
+            if (Math.abs(delta) >= MIN_SWIPE_DISTANCE) {
+              lastSwipeTime = now;
+              logGesture(delta > 0 ? "Swipe Right" : "Swipe Left");
+              positionHistory = [];
+            }
+          }
+        } else {
+          positionHistory = [];
+        }
+        branchHoldStart = null;
+      } else if (hands.length === 2) {
+        let leftOpen = false, rightOpen = false;
+        for (const landmarks of hands) {
+          const open = isOpenPalm(landmarks);
+          const centerX = handCenterX(landmarks);
+          if (open && centerX < 0.33) leftOpen = true;
+          if (open && centerX > 0.67) rightOpen = true;
+        }
+        const bothSidesOpen = leftOpen && rightOpen;
+        if (!bothSidesOpen) {
+          branchHoldStart = null;
+        } else if (branchHoldStart === null) {
+          branchHoldStart = now;
+        } else {
+          const heldFor = now - branchHoldStart;
+          if (heldFor >= BRANCH_HOLD_MS && now - lastBranchTime >= BRANCH_COOLDOWN_MS) {
+            lastBranchTime = now;
+            logGesture("Two Big Ideas / Branch");
+          }
+        }
+
+        const p1 = hands[0][8];
+        const p2 = hands[1][8];
+        const distance = Math.abs(p1.x - p2.x);
+
+        if (boxState !== "IDLE" && now - boxStateEnteredTime > BOX_MAX_DURATION_MS) {
+          boxState = "IDLE"; boxBaselineDistance = null; boxPeakDistance = null;
+        }
+        if (boxState === "IDLE") {
+          if (boxBaselineDistance === null) boxBaselineDistance = distance;
+          if (distance - boxBaselineDistance >= BOX_SPREAD_THRESHOLD) {
+            boxState = "SPREAD"; boxStateEnteredTime = now; boxPeakDistance = distance;
+          }
+        } else if (boxState === "SPREAD") {
+          if (distance > boxPeakDistance) boxPeakDistance = distance;
+          if (boxPeakDistance - distance >= BOX_CLOSE_THRESHOLD) {
+            if (now - lastBoxConfirmTime >= BOX_CONFIRM_COOLDOWN_MS) {
+              lastBoxConfirmTime = now;
+              logGesture("Box Motion / New Node");
+            }
+            boxState = "IDLE"; boxBaselineDistance = null; boxPeakDistance = null;
+          }
+        }
+
+        currentPose = null; poseStartTime = null; positionHistory = [];
+      } else {
+        currentPose = null; poseStartTime = null; positionHistory = [];
+        branchHoldStart = null;
+        boxState = "IDLE"; boxBaselineDistance = null; boxPeakDistance = null;
+      }
+
+      requestAnimationFrame(detectLoop);
+    }
+
+    // ---------- Live speech recognition ----------
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let listening = false;
+    let fullTranscript = "";
+    let currentInterim = "";
+    let currentGraph = { nodes: [], edges: [] };
+    let updateInFlight = false;
+    let pendingUpdate = false;
+    let lastUpdatedTranscript = "";
+    let periodicUpdateTimer = null;
+    let titleUpdateTimer = null;
+    let lastTitledNodeCount = 0;
+    let currentTitle = "Flowchart";
+
+    function combinedTranscript() {
+      return (fullTranscript + " " + currentInterim).trim();
+    }
+
+    async function waitForLiveUpdates() {
+      while (updateInFlight || pendingUpdate) {
+        await new Promise(resolve => setTimeout(resolve, 75));
+      }
+    }
+
+    async function refreshLiveTitle() {
+      if (!currentGraph.nodes || currentGraph.nodes.length === 0) return;
+      if (currentGraph.nodes.length === lastTitledNodeCount) return;
+      lastTitledNodeCount = currentGraph.nodes.length;
+      try {
+        const response = await fetch("/live_title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ graph: currentGraph }),
+        });
+        const data = await response.json();
+        if (data.title) liveTitle.textContent = data.title;
+      } catch (err) {
+        console.error("Live title fetch failed:", err);
+      }
+    }
+
+    async function triggerLiveUpdate() {
+      if (updateInFlight) {
+        pendingUpdate = true;
+        return;
+      }
+      const transcriptToSend = combinedTranscript();
+      updateInFlight = true;
+      try {
+        const response = await fetch("/live_update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcript: transcriptToSend,
+            previous_graph: currentGraph,
+            gestures: gestureLog,
+          }),
+        });
+        const updated = await response.json();
+        if (!response.ok || updated.error) {
+          const message = updated.error || "Live update failed.";
+          status.textContent = message;
+          if (response.status === 429) notify(message, "error");
+        } else {
+          currentGraph = updated;
+          lastUpdatedTranscript = transcriptToSend;
+          await renderLiveGraph(currentGraph);
+        }
+      } catch (err) {
+        console.error("Live update failed:", err);
+      }
+      updateInFlight = false;
+      if (pendingUpdate) {
+        pendingUpdate = false;
+        triggerLiveUpdate();
+      }
+    }
+
+    function setupRecognition() {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onresult = (event) => {
+        let interim = "";
+        let hadNewFinal = false;
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            fullTranscript += event.results[i][0].transcript + " ";
+            hadNewFinal = true;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+        currentInterim = interim;
+        if (hadNewFinal) {
+          triggerLiveUpdate();
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        const messages = {
+          "not-allowed": "Microphone permission was denied. Allow microphone access and try again.",
+          "audio-capture": "No working microphone was found.",
+          "network": "Speech recognition lost its network connection. Try again.",
+          "no-speech": "No speech was detected. Start again when you're ready."
+        };
+        status.textContent = messages[event.error] || "Speech recognition stopped unexpectedly. Please try again.";
+      };
+
+      recognition.onend = () => {
+        if (listening) recognition.start();
+      };
+    }
+
+    // ---------- Start / stop flow ----------
+    function resetToStart() {
+      listening = false;
+      detecting = false;
+      if (recognition) {
+        try { recognition.stop(); } catch (_) {}
+      }
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+      if (periodicUpdateTimer) { clearInterval(periodicUpdateTimer); periodicUpdateTimer = null; }
+      if (titleUpdateTimer) { clearInterval(titleUpdateTimer); titleUpdateTimer = null; }
+      clearTimeout(autosaveTimer);
+      restoreGraphPresentation();
+      document.getElementById("page-home").classList.remove("workspace-active");
+      recordBtn.style.display = "inline-block";
+      recordBtn.disabled = false;
+      recordBtn.classList.remove("recording");
+      recordBtn.textContent = "Start Talking";
+      recordAgainBtn.style.display = "none";
+      downloadLink.style.display = "none";
+      finalActions.classList.remove("active");
+      spinner.style.display = "none";
+      status.textContent = "";
+      gestureHint.textContent = "";
+      videoContainer.classList.remove("active");
+      liveGraphSection.classList.remove("active");
+      fullTranscript = "";
+      currentInterim = "";
+      currentGraph = { nodes: [], edges: [] };
+      graphContainer.innerHTML = "";
+      liveTitle.textContent = "";
+      currentTitle = "Flowchart";
+      currentDesignId = null;
+      savedTranscript = "";
+      document.getElementById("liveGraphLabel").textContent = "Building live";
+      editorShell.classList.remove("active");
+      graphContainer.classList.remove("editor-mode");
+      selectedEditorItem = null;
+      undoStack = [];
+      redoStack = [];
+      lastTitledNodeCount = 0;
+    }
+
+    recordAgainBtn.addEventListener("click", resetToStart);
+
+    recordBtn.addEventListener("click", async () => {
+      if (recordBtn.classList.contains("recording")) {
+        // ---- stop ----
+        listening = false;
+        if (recognition) recognition.stop();
+        if (periodicUpdateTimer) { clearInterval(periodicUpdateTimer); periodicUpdateTimer = null; }
+        if (titleUpdateTimer) { clearInterval(titleUpdateTimer); titleUpdateTimer = null; }
+        detecting = false;
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(track => track.stop());
+        }
+        videoContainer.classList.remove("active");
+        recordBtn.classList.remove("recording");
+        recordBtn.disabled = true;
+        recordBtn.style.display = "none";
+        status.textContent = "";
+        spinner.style.display = "block"; // spinner appears exactly where the download button will land
+
+        // Give the browser a moment to deliver the final recognition event, then
+        // wait until every queued live update has completed.
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await triggerLiveUpdate();
+        await waitForLiveUpdates();
+
+        const finalTranscript = combinedTranscript();
+
+        try {
+          // First get the cleaned graph as JSON and render it on screen. Previously,
+          // cleanup happened only inside /export_pdf, so the user kept seeing the
+          // rough live graph even though the downloaded PDF was clean.
+          const finalizeResponse = await fetch("/finalize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              graph: currentGraph,
+              transcript: finalTranscript,
+              gestures: gestureLog,
+            }),
+          });
+
+          const finalized = await finalizeResponse.json();
+          if (!finalizeResponse.ok || finalized.error) {
+            throw new Error(finalized.error || "Could not finalize the flowchart");
+          }
+
+          currentGraph = finalized.graph;
+          currentTitle = finalized.title || "Flowchart";
+          liveTitle.textContent = currentTitle;
+          await renderLiveGraph(currentGraph);
+          document.getElementById("liveGraphLabel").textContent = "Final flowchart";
+          savedTranscript = finalTranscript;
+          finalActions.classList.add("active");
+
+          spinner.style.display = "none";
+          status.textContent = "Done! Edit the live chart or choose Download.";
+        } catch (err) {
+          spinner.style.display = "none";
+          status.textContent = "Something went wrong: " + err.message;
+        }
+
+        recordAgainBtn.style.display = "inline-block";
+        return;
+      }
+
+      // ---- start ----
+      if (!SpeechRecognition) {
+        status.textContent = "Live transcription isn't supported in this browser. Try Chrome.";
+        return;
+      }
+
+      downloadLink.style.display = "none";
+      finalActions.classList.remove("active");
+      spinner.style.display = "none";
+
+      try {
+        await loadModel();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        status.textContent = err && err.name === "NotAllowedError"
+          ? "Camera or microphone permission was denied. Allow access in your browser and try again."
+          : "Camera, microphone, or gesture detection could not start. Check your connection and devices, then retry.";
+        return;
+      }
+
+      await new Promise(resolve => video.onloadeddata = resolve);
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      videoContainer.classList.add("active");
+      liveGraphSection.classList.add("active");
+      document.getElementById("page-home").classList.add("workspace-active");
+
+      fullTranscript = "";
+      currentInterim = "";
+      lastUpdatedTranscript = "";
+      currentGraph = { nodes: [], edges: [] };
+      gestureLog = [];
+      lastTitledNodeCount = 0;
+      recordStartTime = performance.now();
+
+      if (!recognition) setupRecognition();
+      listening = true;
+      recognition.start();
+
+      periodicUpdateTimer = setInterval(() => {
+        if (combinedTranscript() !== lastUpdatedTranscript) {
+          triggerLiveUpdate();
+        }
+      }, 1300);
+
+      titleUpdateTimer = setInterval(refreshLiveTitle, 3000);
+
+      detecting = true;
+      detectLoop();
+
+      recordBtn.classList.add("recording");
+      recordBtn.textContent = "Stop";
+      status.textContent = "Listening... explain your process and gesture naturally.";
+    });
+  </script>
+</body>
+</html>
