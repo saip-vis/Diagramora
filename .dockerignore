@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+.flask_session
+.venv
+venv
+__pycache__
+*.pyc
+.DS_Store
+test_*.py
+*.md

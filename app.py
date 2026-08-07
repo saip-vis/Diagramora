@@ -34,7 +34,11 @@ from renderer import SUPPORTED_FORMATS, render_flowchart, sanitize_filename
 from supabase_client import SupabaseConfigurationError, public_client, user_client
 
 app = Flask(__name__, template_folder=".")
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-this-development-secret")
+_production = os.getenv("APP_ENV") == "production"
+_secret_key = os.getenv("FLASK_SECRET_KEY")
+if _production and not _secret_key:
+    raise RuntimeError("FLASK_SECRET_KEY must be configured in production.")
+app.secret_key = _secret_key or "change-this-development-secret"
 app.config.update(
     MAX_CONTENT_LENGTH=5 * 1024 * 1024,
     SESSION_TYPE="filesystem",
@@ -43,10 +47,16 @@ app.config.update(
     SESSION_USE_SIGNER=True,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=os.getenv("APP_ENV") == "production",
+    SESSION_COOKIE_SECURE=_production,
     SESSION_REFRESH_EACH_REQUEST=False,
 )
 Session(app)
+
+
+@app.get("/healthz")
+def healthz():
+    """Lightweight host health check that does not call external services."""
+    return jsonify({"status": "ok"})
 
 MAX_DESIGNS_PER_USER = 3
 MAX_TRANSCRIPT_CHARS = 20_000
