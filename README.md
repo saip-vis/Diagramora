@@ -87,12 +87,16 @@ This build uses Supabase Auth and Postgres instead of the temporary local `host`
 
 The current build includes Supabase-backed signup/login/logout, password reset email requests, profile editing, saved designs, autosave for opened designs, design rename/duplicate/delete, and manual version snapshots.
 
+The workspace also includes a per-account first-use walkthrough, visible trial usage, authenticated private-beta feedback, and account-switch request cancellation. Use `ACCOUNT_ISOLATION_TEST.md` for the final two-account regression pass before a release.
+
 During private testing, each account can save up to three designs. The database enforces this atomically; updates to an existing saved design do not consume another slot.
 
 AI-backed routes are protected by per-operation throttles and a database-backed daily quota. The default is 200 AI calls per account per day; set `DAILY_AI_LIMIT` between 10 and 500 to tune it. The latest `supabase_schema.sql` must be installed for quota enforcement and atomic design/version operations.
+
+Free accounts also receive three completed AI flowchart generations and ten AI-assisted edits. These product entitlements are enforced atomically and are separate from burst-rate protection. Failed generation/edit requests are refunded. Manual editing, saving, reopening, and exporting finalized designs do not consume trial credits. Provider token counts, cached input tokens, and estimated costs are recorded internally for cost monitoring.
 
 Password recovery redirects to `/?reset=1`, reads the short-lived Supabase recovery session from the URL, removes it from browser history, and completes the password update through Flask. Add the local and eventual deployed reset URLs to Supabase Authentication → URL Configuration → Redirect URLs.
 
 Focused natural-language editor changes use `gpt-4.1-nano` by default for lower latency. Override `AI_EDIT_MODEL` to evaluate a different quality/latency tradeoff without changing application code.
 
-After updating from an earlier build, run the complete `supabase_schema.sql` in Supabase SQL Editor so the `design_versions` table and policies are created.
+After updating from an earlier build, run the complete `supabase_schema.sql` in Supabase SQL Editor so all current tables, functions, and policies are created.

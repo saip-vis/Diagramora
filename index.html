@@ -106,6 +106,13 @@
   .demo-branches .demo-node { width: 100%; font-size: .99rem; }
   .demo-caption { position: absolute; right: 20px; bottom: 18px; color: #718096; font-size: .75rem; }
   .landing-copy { min-width: 0; }
+  .landing-feedback-wrap { display:flex; justify-content:flex-end; margin:-30px 0 12px; padding-right:4px; }
+  .landing-feedback-card { display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:15px; width:min(440px,100%); margin:0; padding:21px 22px; border:1px solid #b9c7d8; border-radius:16px; background:rgba(255,255,255,.86); color:var(--dark-blue); text-align:left; box-shadow:0 9px 28px rgba(11,37,69,.09); cursor:pointer; transform:translate(150%,200%); transform-origin:right center; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .landing-feedback-card:hover, .landing-feedback-card:focus-visible { transform:translate(150%,200%) scale(1.05); border-color:#8da9c4; box-shadow:0 14px 34px rgba(11,37,69,.14); }
+  .landing-feedback-icon { display:grid; place-items:center; width:48px; height:48px; border-radius:12px; background:#e8f1f8; color:#285f8f; font-size:1.2rem; }
+  .landing-feedback-card strong { display:block; margin-bottom:4px; font-size:1.05rem; }
+  .landing-feedback-card small { display:block; color:#60758a; font-size:.85rem; line-height:1.45; }
+  .landing-feedback-arrow { color:#718096; font-size:1.25rem; }
   @media (max-width: 1200px) {
     .landing-hero { grid-template-columns: minmax(0,1fr) minmax(390px,.82fr); }
     .landing-copy h1 { font-size: clamp(3.2rem, 5.8vw, 4.6rem); }
@@ -121,6 +128,9 @@
   @media (max-width: 900px) {
     .landing-hero { grid-template-columns: 1fr; gap: 36px; padding-top: 24px; }
     .flow-demo { min-height: 440px; }
+    .landing-feedback-wrap { justify-content:center; margin-top:10px; }
+    .landing-feedback-card { transform:translate(0,0); transform-origin:center; }
+    .landing-feedback-card:hover, .landing-feedback-card:focus-visible { transform:scale(1.05); }
   }
 
   h1 { font-size: 1.4rem; font-weight: 600; text-align: center; color: var(--dark-blue); }
@@ -161,6 +171,9 @@
   .example-chip { border:1px solid var(--border); border-radius:999px; padding:9px 13px; background:#fff; color:#405b73; font:650 .82rem inherit; cursor:pointer; box-shadow:var(--shadow-sm); }
   .example-chip:hover { border-color:var(--light-blue); background:#f8fbfd; }
   .workspace-onboarding { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; max-width:900px; margin:38px auto 0; }
+  .workspace-usage { display:none; width:max-content; max-width:calc(100% - 30px); margin:20px auto 0; padding:8px 13px; border:1px solid #c9d5e1; border-radius:999px; background:rgba(255,255,255,.82); color:#52687d; font-size:.8rem; font-weight:700; }
+  .workspace-usage.visible { display:flex; align-items:center; gap:8px; }
+  .workspace-usage-dot { width:7px; height:7px; border-radius:50%; background:#285f8f; }
   .onboarding-step { display:grid; grid-template-columns:auto 1fr; gap:13px; padding:18px; border:1px solid var(--border); border-radius:var(--radius-md); background:rgba(255,255,255,.7); text-align:left; }
   .onboarding-number { display:grid; place-items:center; width:31px; height:31px; border-radius:9px; background:var(--dark-blue); color:#fff; font-size:.78rem; font-weight:800; }
   .onboarding-step strong { display:block; margin-bottom:4px; color:var(--dark-blue); font-size:.9rem; }
@@ -414,7 +427,7 @@
   #aiEditStatus { grid-column: 1 / -1; min-height: 0; padding: 6px 16px 10px; background: #F8FAFC; color: #52687D; font-size: .82rem; }
   @media (prefers-reduced-motion: reduce) { .ai-progress-bar { animation-duration:2.4s; } }
   #graphContainer.editor-mode svg { cursor: default; }
-  #graphContainer.editor-mode g.node, #graphContainer.editor-mode .edgePath path { cursor: pointer; }
+  #graphContainer.editor-mode g.node, #graphContainer.editor-mode .edgePath path, #graphContainer.editor-mode .edgeLabel { cursor: pointer; }
   #graphContainer.editor-mode g.node:hover > rect,
   #graphContainer.editor-mode g.node:hover > polygon,
   #graphContainer.editor-mode g.node:hover > ellipse,
@@ -424,7 +437,10 @@
     filter: drop-shadow(0 0 4px rgba(11,37,69,.45));
     stroke-width: 3px !important;
   }
-  #graphContainer.editor-mode .edgePath.editor-selected path { stroke-width: 4px !important; }
+  #graphContainer.editor-mode .edgePath.editor-selected path:not(.edge-hit-target) { filter:drop-shadow(0 0 3px rgba(40,95,143,.45)); }
+  #graphContainer.editor-mode .edge-hit-target { fill:none !important; stroke:transparent !important; stroke-width:18px !important; pointer-events:stroke; }
+  #graphContainer.editor-mode .edgeLabel:hover { filter:drop-shadow(0 0 3px rgba(40,95,143,.35)); }
+  .property-section-title { margin:2px 0 12px; color:var(--dark-blue); font-size:.78rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
   @media (max-width: 850px) {
     #editorShell.active { grid-template-columns: 1fr; }
     #propertiesPanel { border-left: 0; border-top: 1px solid #D9E3EC; }
@@ -573,6 +589,22 @@
   .account-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:18px; }
   .account-card { background:#fff; border:1px solid #c9d5e1; border-radius:12px; padding:18px; }
   .account-card h3 { margin:0 0 10px; color:var(--dark-blue); }
+  .usage-meter { margin-top:16px; }
+  .usage-meter-copy { display:flex; justify-content:space-between; gap:14px; margin-bottom:7px; color:#334e68; font-size:.88rem; }
+  .usage-meter-copy strong { color:var(--dark-blue); }
+  .usage-meter-track { height:8px; overflow:hidden; border-radius:999px; background:#e4edf5; }
+  .usage-meter-fill { height:100%; width:0; border-radius:inherit; background:#285f8f; transition:width .25s ease; }
+  .usage-note { margin:16px 0 0; color:#526b82; font-size:.83rem; line-height:1.5; }
+  #trialLimitModal .modal-card { width:min(500px,100%); padding:30px; border-top:4px solid #285f8f; }
+  #onboardingModal .modal-card { width:min(650px,100%); padding:32px; }
+  .onboarding-dialog-steps { display:grid; gap:10px; margin:20px 0; }
+  .onboarding-dialog-step { display:grid; grid-template-columns:32px 1fr; gap:12px; align-items:start; padding:13px; border-radius:10px; background:#f5f8fb; color:#52687d; font-size:.9rem; line-height:1.45; }
+  .onboarding-dialog-step strong { color:var(--dark-blue); }
+  .onboarding-sample { padding:14px; border:1px solid #c9d5e1; border-radius:10px; background:#fff; color:#334e68; font-size:.88rem; line-height:1.5; }
+  #feedbackModal .modal-card { width:min(540px,100%); padding:30px; }
+  .feedback-rating { display:flex; gap:8px; margin:10px 0 18px; }
+  .feedback-rating button { width:44px; height:42px; margin:0; border:1px solid #afc0d1; border-radius:9px; background:#fff; color:#405b73; }
+  .feedback-rating button.selected { border-color:#285f8f; background:#e8f1f8; color:#0b2545; box-shadow:0 0 0 2px rgba(40,95,143,.12); }
   .account-stat { font-size:1.6rem; font-weight:700; color:var(--dark-blue); }
   .design-card-actions { flex-wrap:wrap; }
   .design-card-actions button { min-width:72px; }
@@ -627,6 +659,13 @@
         <div class="demo-caption">Generated from natural speech</div>
       </div>
     </div>
+    <div class="landing-feedback-wrap">
+      <button class="landing-feedback-card" id="feedbackCard" type="button">
+        <span class="landing-feedback-icon">✦</span>
+        <span><strong>Help improve Voice to Flowchart</strong><small>Share what worked or what felt confusing.</small></span>
+        <span class="landing-feedback-arrow">→</span>
+      </button>
+    </div>
   </section>
 
   <!-- ---------- HOME / MAIN TOOL ---------- -->
@@ -641,6 +680,8 @@
         <button type="button" class="example-chip" data-example="A support ticket is categorized, assigned by priority, resolved, and then closed after customer confirmation.">Support escalation</button>
       </div>
     </div>
+
+    <div class="workspace-usage" id="workspaceUsage" aria-live="polite"><span class="workspace-usage-dot"></span><span id="workspaceUsageText">Loading free usage…</span></div>
 
     <button class="primary" id="recordBtn">Start Talking</button>
     <div id="spinner"></div>
@@ -735,7 +776,15 @@
       <div class="account-card">
         <h3>Plan</h3>
         <div class="account-stat" id="accountPlan">Free</div>
-        <p>Daily AI usage and short-term request limits are active during private testing.</p>
+        <div class="usage-meter">
+          <div class="usage-meter-copy"><span>Flowchart generations</span><strong id="generationUsage">—</strong></div>
+          <div class="usage-meter-track"><div class="usage-meter-fill" id="generationUsageFill"></div></div>
+        </div>
+        <div class="usage-meter">
+          <div class="usage-meter-copy"><span>AI-assisted edits</span><strong id="editUsage">—</strong></div>
+          <div class="usage-meter-track"><div class="usage-meter-fill" id="editUsageFill"></div></div>
+        </div>
+        <p class="usage-note">Manual editing, saving, reopening, and exporting your existing designs do not use trial credits.</p>
       </div>
     </div>
   </section>
@@ -824,6 +873,11 @@
     </div>
 
     <div class="faq-item">
+      <div class="q">What is included in the free trial?</div>
+      <div class="a">Free accounts include three completed AI-generated flowcharts and ten AI-assisted edits. Manual edits, saving, reopening, and exporting existing designs do not use trial credits.</div>
+    </div>
+
+    <div class="faq-item">
       <div class="q">What do the thick and thin lines mean?</div>
       <div class="a">Thick lines mark the main, expected path through your process. Thin lines mark secondary paths — like error handling, rejections, or side branches.</div>
     </div>
@@ -835,13 +889,13 @@
     <div class="policy-date">Temporary private-testing policy · Effective August 1, 2026</div>
     <div class="policy-card">
       <h2>What this app collects</h2>
-      <p>Flowchart App processes the account information you provide, your transcribed process descriptions, detected gesture names and timestamps, generated flowchart data, and designs you choose to save.</p>
+      <p>Flowchart App processes the account information you provide, your transcribed process descriptions, detected gesture names and timestamps, generated flowchart data, designs you choose to save, and feedback you choose to submit.</p>
 
       <h2>Microphone and camera use</h2>
       <p>The current browser experience uses your microphone for speech recognition and your camera for live hand-landmark detection. Camera frames are processed in the browser and are not intentionally stored by Flowchart App. Speech recognition may be processed by your browser or browser provider. The resulting transcript—not your live camera feed—is sent to the application to generate a flowchart.</p>
 
       <h2>AI and service providers</h2>
-      <p>Transcript text, gesture events, and relevant flowchart data may be sent to OpenAI to generate, repair, title, or edit diagrams. Supabase is used for account authentication and for storing profiles, saved designs, transcripts, and version snapshots.</p>
+      <p>Transcript text, gesture events, and relevant flowchart data may be sent to OpenAI to generate, repair, title, or edit diagrams. Supabase is used for account authentication and for storing profiles, saved designs, transcripts, version snapshots, trial usage, and technical AI usage metadata such as model names and token counts.</p>
 
       <h2>How information is used</h2>
       <ul>
@@ -874,6 +928,46 @@
 </footer>
 
 <div id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+<div class="modal-backdrop" id="onboardingModal" role="dialog" aria-modal="true" aria-labelledby="onboardingHeading">
+  <div class="modal-card">
+    <div class="workspace-eyebrow" style="margin-top:0">Your first flowchart</div>
+    <h2 id="onboardingHeading">Explain the process. We’ll handle the diagram.</h2>
+    <div class="onboarding-dialog-steps">
+      <div class="onboarding-dialog-step"><span class="onboarding-number">1</span><span><strong>Press Start Talking.</strong><br>Allow microphone access; camera gestures are optional.</span></div>
+      <div class="onboarding-dialog-step"><span class="onboarding-number">2</span><span><strong>Speak in your own words.</strong><br>Mention steps, decisions, and what happens on each branch.</span></div>
+      <div class="onboarding-dialog-step"><span class="onboarding-number">3</span><span><strong>Press Stop.</strong><br>Review the cleaned result, edit anything, then save or export.</span></div>
+    </div>
+    <div class="onboarding-sample"><strong>Try saying:</strong> “A customer submits an order. If payment succeeds, ship it; otherwise, ask them to try again.”</div>
+    <div class="modal-actions"><button class="action-btn secondary" id="dismissOnboardingBtn" type="button">Got it</button><button class="action-btn" id="useOnboardingExampleBtn" type="button">Use this example</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="feedbackModal" role="dialog" aria-modal="true" aria-labelledby="feedbackHeading">
+  <div class="modal-card">
+    <h2 id="feedbackHeading">Send feedback</h2>
+    <p>What worked, what felt confusing, or what should improve next?</p>
+    <label>How was your experience?</label>
+    <div class="feedback-rating" id="feedbackRating" role="group" aria-label="Experience rating">
+      <button type="button" data-rating="1" aria-label="1 out of 5">1</button><button type="button" data-rating="2" aria-label="2 out of 5">2</button><button type="button" data-rating="3" aria-label="3 out of 5">3</button><button type="button" data-rating="4" aria-label="4 out of 5">4</button><button type="button" data-rating="5" aria-label="5 out of 5">5</button>
+    </div>
+    <label class="field">Your feedback<textarea id="feedbackMessage" rows="5" maxlength="2000" placeholder="Tell me what you were trying to create and what happened."></textarea></label>
+    <div id="feedbackStatus" role="status" aria-live="polite"></div>
+    <div class="modal-actions"><button class="action-btn secondary" id="cancelFeedbackBtn" type="button">Cancel</button><button class="action-btn" id="submitFeedbackBtn" type="button">Send feedback</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="trialLimitModal" role="dialog" aria-modal="true" aria-labelledby="trialLimitHeading">
+  <div class="modal-card">
+    <h2 id="trialLimitHeading">Free trial limit reached</h2>
+    <p id="trialLimitDescription">You’ve used your free AI allowance.</p>
+    <p>Your existing designs are safe—you can still open them, make manual edits, save changes, and export them.</p>
+    <div class="modal-actions">
+      <button class="action-btn secondary" id="closeTrialLimitBtn" type="button">Keep editing</button>
+      <button class="action-btn" id="viewUsageBtn" type="button">View usage</button>
+    </div>
+  </div>
+</div>
 
 
 <div class="modal-backdrop" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginHeading">
@@ -981,6 +1075,23 @@
       setTimeout(remove, duration);
     }
 
+    function showTrialLimit(kind) {
+      const isEdit = kind === "edit_trial_exhausted";
+      document.getElementById("trialLimitHeading").textContent = isEdit
+        ? "Free AI edit limit reached"
+        : "Free flowchart limit reached";
+      document.getElementById("trialLimitDescription").textContent = isEdit
+        ? "You’ve used all of the AI-assisted edits included in your free trial."
+        : "You’ve generated all three flowcharts included in your free trial.";
+      document.getElementById("trialLimitModal").classList.add("active");
+    }
+    document.getElementById("closeTrialLimitBtn").onclick = () => document.getElementById("trialLimitModal").classList.remove("active");
+    document.getElementById("viewUsageBtn").onclick = () => {
+      document.getElementById("trialLimitModal").classList.remove("active");
+      showPage("account");
+      loadProfile();
+    };
+
     // ---------- Header nav ----------
     function showPage(pageName) {
       const protectedPages = new Set(["home", "designs", "account"]);
@@ -1050,7 +1161,12 @@
     const deleteDesignModal = document.getElementById("deleteDesignModal");
     const renameDesignModal = document.getElementById("renameDesignModal");
     const resetPasswordModal = document.getElementById("resetPasswordModal");
+    const onboardingModal = document.getElementById("onboardingModal");
+    const feedbackModal = document.getElementById("feedbackModal");
+    const feedbackCard = document.getElementById("feedbackCard");
     let isLoggedIn = false;
+    let currentUserId = null;
+    let selectedFeedbackRating = 0;
     let currentDesignId = null;
     let autosaveTimer = null;
     let autosaveInFlight = false;
@@ -1059,6 +1175,89 @@
     let renameDesignTarget = null;
     let pendingResetTokens = null;
     let savedTranscript = "";
+    let accountRequestEpoch = 0;
+    const accountRequestControllers = new Set();
+
+    function invalidateAccountRequests() {
+      accountRequestEpoch += 1;
+      accountRequestControllers.forEach(controller => controller.abort());
+      accountRequestControllers.clear();
+    }
+
+    function clearAccountScopedUi() {
+      resetToStart();
+      versionsDesignId = null;
+      deleteDesignTarget = null;
+      renameDesignTarget = null;
+      autosaveInFlight = false;
+      [exportModal, deleteDesignModal, renameDesignModal, feedbackModal, onboardingModal, document.getElementById("versionsModal"), document.getElementById("trialLimitModal")]
+        .forEach(modal => modal?.classList.remove("active"));
+      document.getElementById("versionList").textContent = "";
+      document.getElementById("designGrid").innerHTML = "";
+      document.getElementById("designUsage").textContent = "0 of 3 designs";
+      document.getElementById("designsMessage").textContent = "Log in to view saved designs.";
+      document.getElementById("accountEmail").value = "";
+      document.getElementById("accountUsername").value = "";
+      document.getElementById("accountDisplayName").value = "";
+      document.getElementById("accountPlan").textContent = "Free";
+      document.getElementById("profileStatus").textContent = "";
+      document.getElementById("generationUsage").textContent = "—";
+      document.getElementById("editUsage").textContent = "—";
+      document.getElementById("generationUsageFill").style.width = "0%";
+      document.getElementById("editUsageFill").style.width = "0%";
+      document.getElementById("workspaceUsage").classList.remove("visible");
+      document.getElementById("feedbackMessage").value = "";
+      selectedFeedbackRating = 0;
+      aiEditInput.value = "";
+      aiEditStatus.textContent = "";
+      stopAiEditProgress();
+    }
+
+    function friendlyRequestError(response, data, fallback) {
+      if (data?.error) return data.error;
+      if (response?.status === 401) return "Your session expired. Log in again and your saved designs will remain available.";
+      if (response?.status === 429) return "That action is temporarily limited. Wait a moment and try again.";
+      if (response?.status === 503) return "The service is temporarily unavailable. Your current work is still in the browser—try again shortly.";
+      return fallback;
+    }
+
+    async function accountFetch(input, init = {}) {
+      const requestEpoch = accountRequestEpoch;
+      const controller = new AbortController();
+      accountRequestControllers.add(controller);
+      let responseReturned = false;
+      const assertCurrentAccount = () => {
+        if (requestEpoch !== accountRequestEpoch) {
+          throw new DOMException("Stale account response", "AbortError");
+        }
+      };
+      try {
+        const response = await fetch(input, {...init, signal: controller.signal});
+        assertCurrentAccount();
+        const bodyReaders = new Set(["arrayBuffer", "blob", "formData", "json", "text"]);
+        responseReturned = true;
+        return new Proxy(response, {
+          get(target, property) {
+            const value = Reflect.get(target, property, target);
+            if (bodyReaders.has(property) && typeof value === "function") {
+              return async (...args) => {
+                try {
+                  assertCurrentAccount();
+                  const result = await value.apply(target, args);
+                  assertCurrentAccount();
+                  return result;
+                } finally {
+                  accountRequestControllers.delete(controller);
+                }
+              };
+            }
+            return typeof value === "function" ? value.bind(target) : value;
+          }
+        });
+      } finally {
+        if (!responseReturned) accountRequestControllers.delete(controller);
+      }
+    }
 
     document.querySelectorAll(".example-chip").forEach(button => {
       button.addEventListener("click", () => {
@@ -1409,7 +1608,7 @@
     }
 
     function applyEditorEdgeShapes() {
-      const paths = [...graphContainer.querySelectorAll(".edgePath path")];
+      const paths = [...graphContainer.querySelectorAll(".edgePath path:not(.edge-hit-target)")];
       paths.forEach((path, index) => {
         const edge = (currentGraph.edges || [])[index];
         if (!edge) return;
@@ -1448,12 +1647,13 @@
       const id = group.id || "";
       return (currentGraph.nodes || []).find(node => id.includes(nodeSafeId(node.id))) || null;
     }
-    function identifyEdgeFromPath(path) {
+    function identifyEdgeFromPath(path, fallbackIndex = -1) {
       const parent = path.closest(".edgePath") || path.parentElement;
       const id = (path.id || "") + " " + (parent && parent.id || "");
-      return (currentGraph.edges || []).find((edge, index) =>
+      const identified = (currentGraph.edges || []).find((edge) =>
         id.includes(nodeSafeId(edge.from)) && id.includes(nodeSafeId(edge.to))
-      ) || null;
+      );
+      return identified || (currentGraph.edges || [])[fallbackIndex] || null;
     }
     function attachEditorInteractions() {
       graphContainer.classList.add("editor-mode");
@@ -1467,16 +1667,38 @@
           renderNodeProperties(node);
         });
       });
-      graphContainer.querySelectorAll(".edgePath path").forEach(path => {
-        path.style.pointerEvents = "stroke";
-        path.addEventListener("click", event => {
+      const edgeGroups = [...graphContainer.querySelectorAll(".edgePath")];
+      const edgeLabels = [...graphContainer.querySelectorAll(".edgeLabel")];
+      let edgeLabelIndex = 0;
+      edgeGroups.forEach((group, index) => {
+        const path = group.querySelector("path:not(.edge-hit-target)");
+        if (!path) return;
+        const edge = identifyEdgeFromPath(path, index);
+        if (!edge) return;
+        const selectEdge = event => {
           event.stopPropagation();
-          const edge = identifyEdgeFromPath(path);
-          if (!edge) return;
           selectedEditorItem = { kind: "edge", item: edge };
-          selectSvgElement(path.closest(".edgePath") || path);
+          selectSvgElement(group);
           renderEdgeProperties(edge);
-        });
+        };
+        path.style.pointerEvents = "stroke";
+        path.addEventListener("click", selectEdge);
+        const hitTarget = path.cloneNode(false);
+        hitTarget.removeAttribute("id");
+        hitTarget.removeAttribute("class");
+        hitTarget.removeAttribute("marker-start");
+        hitTarget.removeAttribute("marker-end");
+        hitTarget.setAttribute("class", "edge-hit-target");
+        hitTarget.setAttribute("aria-hidden", "true");
+        hitTarget.addEventListener("click", selectEdge);
+        group.appendChild(hitTarget);
+        if (edge.label && edgeLabels[edgeLabelIndex]) {
+          edgeLabels[edgeLabelIndex].addEventListener("click", selectEdge);
+          edgeLabelIndex += 1;
+        }
+        if (selectedEditorItem?.kind === "edge" && selectedEditorItem.item === edge) {
+          selectSvgElement(group);
+        }
       });
       graphContainer.onclick = () => { selectedEditorItem = null; selectSvgElement(null); showEmptyProperties(); };
     }
@@ -1540,6 +1762,7 @@
       const style = ensureMetadata(edge);
       propertyContent.className = "";
       propertyContent.innerHTML =
+        `<div class="property-section-title">Connection style</div>` +
         field("Label", `<input id="edgeLabel" value="${String(edge.label || "").replace(/"/g,"&quot;")}">`) +
         `<div class="field-row">${field("Color", `<input id="edgeColor" type="color" value="${style.stroke || '#0b2545'}">`)}${field("Thickness", `<input id="edgeWidth" type="number" min="1" max="8" value="${style.strokeWidth || 2}" step="0.5">`)}</div>` +
         field("Line pattern", `<select id="edgePattern"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select>`) +
@@ -1647,15 +1870,17 @@
       startAiEditProgress();
       try {
         pushUndo();
-        const response = await fetch("/ai_edit", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({graph:currentGraph, instruction})});
+        const response = await accountFetch("/ai_edit", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({graph:currentGraph, instruction})});
         const data = await response.json();
-        if (!response.ok || data.error) throw new Error(data.error || "AI edit failed");
+        if (data.code === "edit_trial_exhausted") showTrialLimit(data.code);
+        if (!response.ok || data.error) throw new Error(friendlyRequestError(response, data, "AI edit failed."));
         currentGraph = data.graph;
         await renderLiveGraph(currentGraph);
         scheduleAutosave();
         aiEditInput.value = "";
         const elapsed = Number(data.elapsed_ms) > 0 ? Number(data.elapsed_ms) / 1000 : (performance.now() - aiProgressStartedAt) / 1000;
         aiEditStatus.textContent = `AI edit applied in ${elapsed.toFixed(1)} seconds.`;
+        refreshWorkspaceUsage();
       } catch (err) {
         aiEditStatus.textContent = err.message;
       } finally {
@@ -1673,8 +1898,9 @@
     aiEditInput.addEventListener("keydown", event => { if (event.key === "Enter") aiEditBtn.click(); });
 
     // ---------- Authentication, saved designs, and exports ----------
-    function setAuthUi(loggedIn, username = null) {
+    function setAuthUi(loggedIn, username = null, userId = null) {
       isLoggedIn = loggedIn;
+      currentUserId = loggedIn ? userId : null;
       workspaceNav.classList.toggle("hidden", !loggedIn);
       myDesignsNav.classList.toggle("hidden", !loggedIn);
       accountNav.classList.toggle("visible", loggedIn);
@@ -1693,7 +1919,11 @@
       try {
         const response = await fetch("/auth/status");
         const data = await response.json();
-        setAuthUi(Boolean(data.logged_in), data.user?.username || data.user?.email);
+        setAuthUi(Boolean(data.logged_in), data.user?.username || data.user?.email, data.user?.id);
+        if (data.logged_in) {
+          refreshWorkspaceUsage();
+          showFirstRunOnboarding(data.user?.id);
+        }
       } catch (_) { setAuthUi(false); }
     }
     let authMode = "login";
@@ -1726,11 +1956,9 @@
     };
     loginNavBtn.onclick = async () => {
       if (isLoggedIn) {
+        invalidateAccountRequests();
         await fetch("/logout", {method:"POST"});
-        resetToStart();
-        document.getElementById("designGrid").innerHTML = "";
-        document.getElementById("designUsage").textContent = "0 of 3 designs";
-        document.getElementById("designsMessage").textContent = "Log in to view saved designs.";
+        clearAccountScopedUi();
         setAuthUi(false);
         showPage("landing");
       } else {
@@ -1754,11 +1982,14 @@
         if (data.logged_in) {
           // Authentication is a hard workspace boundary. Never carry a graph,
           // transcript, undo history, or autosave target into another account.
-          resetToStart();
-          setAuthUi(true, data.user?.username || data.user?.email);
+          invalidateAccountRequests();
+          clearAccountScopedUi();
+          setAuthUi(true, data.user?.username || data.user?.email, data.user?.id);
           loginModal.classList.remove("active");
           showPage("home");
           status.textContent = "You’re signed in. Start talking when you’re ready.";
+          refreshWorkspaceUsage();
+          showFirstRunOnboarding(data.user?.id);
         } else {
           document.getElementById("loginStatus").style.color = "#276749";
           document.getElementById("loginStatus").textContent = data.message || "Check your email to confirm your account.";
@@ -1772,6 +2003,97 @@
     };
     document.getElementById("loginPassword").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("submitLoginBtn").click(); });
 
+    function showFirstRunOnboarding(userId) {
+      if (!userId) return;
+      try {
+        if (localStorage.getItem(`flowchart-onboarding:${userId}`)) return;
+      } catch (_) { /* Private browsing may disable storage; show it once this load. */ }
+      onboardingModal.classList.add("active");
+    }
+    function dismissOnboarding() {
+      onboardingModal.classList.remove("active");
+      if (currentUserId) {
+        try { localStorage.setItem(`flowchart-onboarding:${currentUserId}`, "seen"); } catch (_) {}
+      }
+    }
+    document.getElementById("dismissOnboardingBtn").onclick = dismissOnboarding;
+    document.getElementById("useOnboardingExampleBtn").onclick = () => {
+      dismissOnboarding();
+      status.textContent = "Try saying: “A customer submits an order. If payment succeeds, ship it; otherwise, ask them to try again.”";
+      recordBtn.focus();
+    };
+
+    function renderUsageSummary(profile, entitlements) {
+      const generationLimit = Number(entitlements.generation_limit || 0);
+      const generationsUsed = Number(entitlements.generations_used || 0);
+      const editLimit = Number(entitlements.edit_limit || 0);
+      const editsUsed = Number(entitlements.edits_used || 0);
+      const paidPlan = (profile.plan || "free") !== "free";
+      const generationsRemaining = Math.max(generationLimit - generationsUsed, 0);
+      const editsRemaining = Math.max(editLimit - editsUsed, 0);
+      document.getElementById("generationUsage").textContent = paidPlan ? "Unlimited" : `${generationsRemaining} of ${generationLimit} left`;
+      document.getElementById("editUsage").textContent = paidPlan ? "Unlimited" : `${editsRemaining} of ${editLimit} left`;
+      document.getElementById("generationUsageFill").style.width = paidPlan ? "0%" : `${generationLimit ? Math.min(generationsUsed / generationLimit * 100, 100) : 0}%`;
+      document.getElementById("editUsageFill").style.width = paidPlan ? "0%" : `${editLimit ? Math.min(editsUsed / editLimit * 100, 100) : 0}%`;
+      document.getElementById("workspaceUsageText").textContent = paidPlan
+        ? "Unlimited AI usage"
+        : `${generationsRemaining} flowchart${generationsRemaining === 1 ? "" : "s"} · ${editsRemaining} AI edit${editsRemaining === 1 ? "" : "s"} remaining`;
+      document.getElementById("workspaceUsage").classList.add("visible");
+    }
+
+    async function refreshWorkspaceUsage() {
+      if (!isLoggedIn) return;
+      try {
+        const response = await accountFetch("/profile");
+        const data = await response.json();
+        if (!response.ok) throw new Error(friendlyRequestError(response, data, "Could not load usage."));
+        renderUsageSummary(data.profile || {}, data.entitlements || {});
+      } catch (err) {
+        if (err.name !== "AbortError") document.getElementById("workspaceUsageText").textContent = "Usage unavailable";
+      }
+    }
+
+    function openFeedbackModal() {
+      if (!isLoggedIn) {
+        openAuthModal("login");
+        document.getElementById("loginStatus").textContent = "Log in to send feedback.";
+        return;
+      }
+      selectedFeedbackRating = 0;
+      document.querySelectorAll("#feedbackRating button").forEach(button => button.classList.remove("selected"));
+      document.getElementById("feedbackMessage").value = "";
+      document.getElementById("feedbackStatus").textContent = "";
+      feedbackModal.classList.add("active");
+      document.getElementById("feedbackMessage").focus();
+    }
+    feedbackCard.onclick = openFeedbackModal;
+    document.querySelectorAll("#feedbackRating button").forEach(button => {
+      button.onclick = () => {
+        selectedFeedbackRating = Number(button.dataset.rating);
+        document.querySelectorAll("#feedbackRating button").forEach(item => item.classList.toggle("selected", item === button));
+      };
+    });
+    document.getElementById("cancelFeedbackBtn").onclick = () => feedbackModal.classList.remove("active");
+    document.getElementById("submitFeedbackBtn").onclick = async () => {
+      const message = document.getElementById("feedbackMessage").value.trim();
+      const feedbackStatus = document.getElementById("feedbackStatus");
+      if (!selectedFeedbackRating) { feedbackStatus.textContent = "Choose a rating from 1 to 5."; return; }
+      if (!message) { feedbackStatus.textContent = "Write a short note before sending."; return; }
+      const button = document.getElementById("submitFeedbackBtn");
+      button.disabled = true;
+      feedbackStatus.textContent = "Sending…";
+      try {
+        const activePage = document.querySelector(".page.active")?.id?.replace("page-", "") || "general";
+        const response = await accountFetch("/feedback", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({rating:selectedFeedbackRating,message,context:activePage})});
+        const data = await response.json();
+        if (!response.ok) throw new Error(friendlyRequestError(response, data, "Could not send feedback."));
+        feedbackModal.classList.remove("active");
+        notify("Thanks—your feedback was sent.", "success");
+      } catch (err) {
+        if (err.name !== "AbortError") feedbackStatus.textContent = err.message;
+      } finally { button.disabled = false; }
+    };
+
     function scheduleAutosave(delay = 1400) {
       if (!isLoggedIn || !currentDesignId || !(currentGraph.nodes || []).length) return;
       clearTimeout(autosaveTimer);
@@ -1784,7 +2106,7 @@
       const profileStatus = document.getElementById("profileStatus");
       profileStatus.textContent = "Loading…";
       try {
-        const response = await fetch("/profile");
+        const response = await accountFetch("/profile");
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not load profile");
         const profile = data.profile;
@@ -1792,6 +2114,7 @@
         document.getElementById("accountUsername").value = profile.username || "";
         document.getElementById("accountDisplayName").value = profile.display_name || "";
         document.getElementById("accountPlan").textContent = (profile.plan || "free").replace(/^./, c => c.toUpperCase());
+        renderUsageSummary(profile, data.entitlements || {});
         profileStatus.textContent = "";
       } catch (err) { profileStatus.textContent = err.message; }
     }
@@ -1799,7 +2122,7 @@
       const statusEl = document.getElementById("profileStatus");
       statusEl.textContent = "Saving…";
       try {
-        const response = await fetch("/profile", {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username:document.getElementById("accountUsername").value,display_name:document.getElementById("accountDisplayName").value})});
+        const response = await accountFetch("/profile", {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username:document.getElementById("accountUsername").value,display_name:document.getElementById("accountDisplayName").value})});
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not save profile");
         statusEl.textContent = "Profile saved.";
@@ -1883,9 +2206,9 @@
       if (autosaveInFlight) return; autosaveInFlight = true;
       saveDesignBtn.disabled = true; if (!silent) status.textContent = "Saving design…"; autosaveIndicator.textContent = "Saving…";
       try {
-        const response = await fetch("/designs", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id:currentDesignId,title:currentTitle,graph:currentGraph,transcript:savedTranscript})});
+        const response = await accountFetch("/designs", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id:currentDesignId,title:currentTitle,graph:currentGraph,transcript:savedTranscript})});
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Could not save design");
+        if (!response.ok) throw new Error(friendlyRequestError(response, data, "Could not save design."));
         currentDesignId = data.design.id; if (!silent) status.textContent = "Design saved."; autosaveIndicator.textContent = "Saved";
       } catch (err) { status.textContent = err.message; autosaveIndicator.textContent = "Save failed"; }
       finally { saveDesignBtn.disabled = false; autosaveInFlight = false; }
@@ -1927,7 +2250,7 @@
       if (!isLoggedIn) { message.textContent = "Log in to view saved designs."; return; }
       message.textContent = "Loading designs…";
       try {
-        const response = await fetch("/designs"); const data = await response.json();
+        const response = await accountFetch("/designs"); const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not load designs");
         const usage = data.usage || {used:data.designs.length, limit:3, remaining:Math.max(0, 3 - data.designs.length)};
         document.getElementById("designUsage").textContent = `${usage.used} of ${usage.limit} designs`;
@@ -1940,7 +2263,7 @@
           card.querySelector(".open-design").onclick = () => openSavedDesign(design.id);
           card.querySelector(".rename-design").onclick = () => openRenameDesignDialog(design);
           card.querySelector(".duplicate-design").onclick = async () => {
-            const duplicateResponse = await fetch(`/designs/${design.id}/duplicate`, {method:"POST"});
+            const duplicateResponse = await accountFetch(`/designs/${design.id}/duplicate`, {method:"POST"});
             const duplicateData = await duplicateResponse.json();
             if (!duplicateResponse.ok) return notify(duplicateData.error || "Could not duplicate design", "error");
             notify("Design duplicated.", "success");
@@ -1987,7 +2310,7 @@
       confirmButton.textContent = "Deleting…";
       dialogStatus.textContent = "Deleting design…";
       try {
-        const response = await fetch(`/designs/${encodeURIComponent(target.id)}`, {method:"DELETE"});
+        const response = await accountFetch(`/designs/${encodeURIComponent(target.id)}`, {method:"DELETE"});
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not delete design");
         if (String(currentDesignId) === String(target.id)) resetToStart();
@@ -2047,7 +2370,7 @@
       confirmButton.textContent = "Saving…";
       dialogStatus.textContent = "Saving name…";
       try {
-        const response = await fetch(`/designs/${encodeURIComponent(target.id)}`, {
+        const response = await accountFetch(`/designs/${encodeURIComponent(target.id)}`, {
           method:"PATCH",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({title})
@@ -2084,14 +2407,14 @@
       list.textContent = "Loading versions…";
       document.getElementById("versionsModal").classList.add("active");
       try {
-        const response = await fetch(`/designs/${designId}/versions`); const data = await response.json();
+        const response = await accountFetch(`/designs/${designId}/versions`); const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not load versions");
         list.innerHTML = data.versions.length ? "" : "No snapshots yet.";
         data.versions.forEach(version => {
           const row = document.createElement("div"); row.className = "version-row";
           row.innerHTML = `<span>Version ${version.version_number}<br><small>${new Date(version.created_at).toLocaleString()}</small></span><button type="button">Open</button>`;
           row.querySelector("button").onclick = async () => {
-            const r = await fetch(`/versions/${version.id}`); const d = await r.json();
+            const r = await accountFetch(`/versions/${version.id}`); const d = await r.json();
             if (!r.ok) return notify(d.error || "Could not load version", "error");
             currentGraph = d.version.graph; savedTranscript = d.version.transcript || "";
             document.getElementById("page-home").classList.add("workspace-active");
@@ -2105,14 +2428,14 @@
     document.getElementById("createVersionBtn").onclick = async () => {
       if (!versionsDesignId) return;
       await saveCurrentDesign(true);
-      const response = await fetch(`/designs/${versionsDesignId}/versions`, {method:"POST"}); const data = await response.json();
+      const response = await accountFetch(`/designs/${versionsDesignId}/versions`, {method:"POST"}); const data = await response.json();
       if (!response.ok) return notify(data.error || "Could not create snapshot", "error");
       notify("Version snapshot created.", "success");
       openVersions(versionsDesignId);
     };
 
     async function openSavedDesign(id) {
-      const response = await fetch(`/designs/${id}`); const data = await response.json();
+      const response = await accountFetch(`/designs/${id}`); const data = await response.json();
       if (!response.ok) { notify(data.error || "Could not open design", "error"); return; }
       currentDesignId = data.design.id; currentGraph = data.design.graph; currentTitle = data.design.title || "Flowchart"; savedTranscript = data.design.transcript || "";
       document.getElementById("page-home").classList.add("workspace-active");
@@ -2371,7 +2694,7 @@
       if (currentGraph.nodes.length === lastTitledNodeCount) return;
       lastTitledNodeCount = currentGraph.nodes.length;
       try {
-        const response = await fetch("/live_title", {
+        const response = await accountFetch("/live_title", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ graph: currentGraph }),
@@ -2391,7 +2714,7 @@
       const transcriptToSend = combinedTranscript();
       updateInFlight = true;
       try {
-        const response = await fetch("/live_update", {
+        const response = await accountFetch("/live_update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2536,7 +2859,7 @@
           // First get the cleaned graph as JSON and render it on screen. Previously,
           // cleanup happened only inside /export_pdf, so the user kept seeing the
           // rough live graph even though the downloaded PDF was clean.
-          const finalizeResponse = await fetch("/finalize", {
+          const finalizeResponse = await accountFetch("/finalize", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -2547,8 +2870,9 @@
           });
 
           const finalized = await finalizeResponse.json();
+          if (finalized.code === "generation_trial_exhausted") showTrialLimit(finalized.code);
           if (!finalizeResponse.ok || finalized.error) {
-            throw new Error(finalized.error || "Could not finalize the flowchart");
+            throw new Error(friendlyRequestError(finalizeResponse, finalized, "Could not finalize the flowchart."));
           }
 
           currentGraph = finalized.graph;
@@ -2561,6 +2885,7 @@
 
           spinner.style.display = "none";
           status.textContent = "Done! Edit the live chart or choose Download.";
+          refreshWorkspaceUsage();
         } catch (err) {
           spinner.style.display = "none";
           status.textContent = "Something went wrong: " + err.message;
@@ -2580,21 +2905,22 @@
       finalActions.classList.remove("active");
       spinner.style.display = "none";
 
+      let gesturesAvailable = false;
       try {
         await loadModel();
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
         video.srcObject = stream;
+        await new Promise(resolve => video.onloadeddata = resolve);
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        videoContainer.classList.add("active");
+        gesturesAvailable = true;
       } catch (err) {
-        status.textContent = err && err.name === "NotAllowedError"
-          ? "Camera or microphone permission was denied. Allow access in your browser and try again."
-          : "Camera, microphone, or gesture detection could not start. Check your connection and devices, then retry.";
-        return;
+        console.warn("Gesture input unavailable; continuing with speech only.", err);
+        video.srcObject = null;
+        videoContainer.classList.remove("active");
+        notify("Camera gestures are unavailable, but you can continue with speech only.");
       }
-
-      await new Promise(resolve => video.onloadeddata = resolve);
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      videoContainer.classList.add("active");
       liveGraphSection.classList.add("active");
       document.getElementById("page-home").classList.add("workspace-active");
 
@@ -2618,12 +2944,14 @@
 
       titleUpdateTimer = setInterval(refreshLiveTitle, 3000);
 
-      detecting = true;
-      detectLoop();
+      detecting = gesturesAvailable;
+      if (gesturesAvailable) detectLoop();
 
       recordBtn.classList.add("recording");
       recordBtn.textContent = "Stop";
-      status.textContent = "Listening... explain your process and gesture naturally.";
+      status.textContent = gesturesAvailable
+        ? "Listening… explain your process and gesture naturally."
+        : "Listening… explain your process naturally. Speech-only mode is active.";
     });
   </script>
 </body>

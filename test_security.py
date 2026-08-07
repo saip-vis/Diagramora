@@ -9,12 +9,27 @@ os.environ["SESSION_FILE_DIR"] = tempfile.mkdtemp(prefix="flowchart-test-session
 from app import (
     MAX_INSTRUCTION_CHARS,
     _bounded_text,
+    _clear_and_rotate_session,
+    _estimated_cost_microusd,
     _validated_graph,
     app,
 )
+from flask import session
 
 
 class ValidationTests(unittest.TestCase):
+    def test_cost_estimate_separates_cached_tokens(self):
+        cost = _estimated_cost_microusd({
+            "model": "gpt-4.1-nano-2025-04-14",
+            "input_tokens": 1000,
+            "cached_input_tokens": 400,
+            "output_tokens": 200,
+        })
+        self.assertEqual(cost, 150)
+
+    def test_unknown_model_cost_is_zero_but_can_still_be_logged(self):
+        self.assertEqual(_estimated_cost_microusd({"model": "future-model", "input_tokens": 100}), 0)
+
     def test_bounded_text_rejects_oversized_input(self):
         with self.assertRaises(ValueError):
             _bounded_text("x" * (MAX_INSTRUCTION_CHARS + 1), "Instruction", MAX_INSTRUCTION_CHARS)
@@ -55,6 +70,7 @@ class ApiBoundaryTests(unittest.TestCase):
             ("post", "/live_update"),
             ("post", "/finalize"),
             ("post", "/ai_edit"),
+            ("post", "/feedback"),
             ("get", "/designs"),
         ):
             response = getattr(self.client, method)(path, json={})
@@ -85,6 +101,14 @@ class ApiBoundaryTests(unittest.TestCase):
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("default-src 'self'", response.headers["Content-Security-Policy"])
         self.assertIn("camera=(self)", response.headers["Permissions-Policy"])
+
+    def test_auth_boundary_rotates_server_session_id(self):
+        with app.test_request_context("/"):
+            session["supabase_access_token"] = "old-user-token"
+            old_session_id = session.sid
+            _clear_and_rotate_session()
+            self.assertNotEqual(session.sid, old_session_id)
+            self.assertNotIn("supabase_access_token", session)
 
 
 if __name__ == "__main__":

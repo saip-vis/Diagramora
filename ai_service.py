@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from openai import OpenAI
 
 from graph_model import Flowchart
@@ -17,6 +19,33 @@ from prompts import CONTENT_POLICY, GESTURE_DEFINITIONS
 
 client = OpenAI(timeout=45.0, max_retries=1)
 AI_EDIT_MODEL = os.getenv("AI_EDIT_MODEL", "gpt-4.1-nano").strip() or "gpt-4.1-nano"
+_usage_collector: ContextVar[list | None] = ContextVar("ai_usage_collector", default=None)
+
+
+@contextmanager
+def collect_ai_usage():
+    """Collect per-request model usage without leaking data across Flask threads."""
+    records = []
+    token = _usage_collector.set(records)
+    try:
+        yield records
+    finally:
+        _usage_collector.reset(token)
+
+
+def _capture_usage(response, requested_model: str) -> None:
+    records = _usage_collector.get()
+    usage = getattr(response, "usage", None)
+    if records is None or usage is None:
+        return
+    prompt_details = getattr(usage, "prompt_tokens_details", None)
+    records.append({
+        "model": getattr(response, "model", None) or requested_model,
+        "input_tokens": int(getattr(usage, "prompt_tokens", 0) or 0),
+        "cached_input_tokens": int(getattr(prompt_details, "cached_tokens", 0) or 0),
+        "output_tokens": int(getattr(usage, "completion_tokens", 0) or 0),
+        "request_id": getattr(response, "_request_id", None),
+    })
 
 def transcribe_audio(audio_path: str) -> str:
     with open(audio_path, "rb") as audio_file:
@@ -72,11 +101,13 @@ Transcript:
 Gestures detected during the explanation:
 {gesture_text}"""
 
+    model = "gpt-4o-mini"
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
+    _capture_usage(response, model)
     return Flowchart.from_dict(json.loads(response.choices[0].message.content.strip())).to_dict()
 
 def update_graph_live(transcript: str, previous_graph: dict, gestures: list) -> dict:
@@ -136,12 +167,13 @@ Full transcript so far:
 Gestures detected so far:
 {gesture_text}"""
 
+    model = "gpt-4.1-nano"
     response = client.chat.completions.create(
-        model="gpt-4.1-nano",
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
-    print(f"[live_update tokens] input: {response.usage.prompt_tokens}, output: {response.usage.completion_tokens}, total: {response.usage.total_tokens}")
+    _capture_usage(response, model)
     diff = json.loads(response.choices[0].message.content.strip())
 
     merged_nodes = list(previous_graph.get("nodes", []))
@@ -197,11 +229,13 @@ CURRENT GRAPH:
 TRANSCRIPT:
 {transcript}
 """
+    model = "gpt-4o"
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
+    _capture_usage(response, model)
     repaired = Flowchart.from_dict(json.loads(response.choices[0].message.content.strip())).to_dict()
     repaired, _ = merge_similar_nodes(repaired)
     return normalize_final_graph(repaired)
@@ -274,11 +308,13 @@ FULL TRANSCRIPT:
 GESTURES:
 {gesture_text}"""
 
+    model = "gpt-4o"
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
+    _capture_usage(response, model)
     cleaned = Flowchart.from_dict(json.loads(response.choices[0].message.content.strip())).to_dict()
     cleaned, _ = merge_similar_nodes(cleaned)
     cleaned = normalize_final_graph(cleaned)
@@ -304,10 +340,12 @@ Steps:
 {chr(10).join('- ' + label for label in node_labels)}"""
 
     try:
+        model = "gpt-4.1-nano"
         response = client.chat.completions.create(
-            model="gpt-4.1-nano",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
         )
+        _capture_usage(response, model)
         title = response.choices[0].message.content.strip().strip('"').strip("'")
         return title if title else "Flowchart"
     except Exception:
@@ -356,5 +394,6 @@ Return this schema:
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
+    _capture_usage(response, AI_EDIT_MODEL)
     result = json.loads(response.choices[0].message.content.strip())
     return build_layout_plan(Flowchart.from_dict(result)).to_dict()

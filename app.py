@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from ai_service import (
+    collect_ai_usage,
     extract_flowchart_json,
     finalize_graph,
     generate_title,
@@ -43,6 +44,7 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.getenv("APP_ENV") == "production",
+    SESSION_REFRESH_EACH_REQUEST=False,
 )
 Session(app)
 
@@ -61,6 +63,13 @@ AI_LIMITS = {
     "finalize": (600, 8),
     "ai_edit": (600, 12),
     "export": (600, 15),
+}
+# Standard-processing estimates in USD per one million tokens. Raw token counts
+# remain authoritative if prices change; this table is only an operational estimate.
+MODEL_PRICING_USD_PER_MILLION = {
+    "gpt-4.1-nano": {"input": 0.10, "cached": 0.025, "output": 0.40},
+    "gpt-4o-mini": {"input": 0.15, "cached": 0.075, "output": 0.60},
+    "gpt-4o": {"input": 2.50, "cached": 1.25, "output": 10.00},
 }
 _public_attempts = defaultdict(deque)
 _public_attempts_lock = threading.Lock()
@@ -200,12 +209,135 @@ def _consume_ai_quota(operation: str):
     return None
 
 
+def _estimated_cost_microusd(usage: dict) -> int:
+    model = str(usage.get("model") or "")
+    pricing = next((rates for prefix, rates in MODEL_PRICING_USD_PER_MILLION.items() if model.startswith(prefix)), None)
+    if not pricing:
+        return 0
+    input_tokens = max(int(usage.get("input_tokens") or 0), 0)
+    cached_tokens = min(max(int(usage.get("cached_input_tokens") or 0), 0), input_tokens)
+    uncached_tokens = input_tokens - cached_tokens
+    output_tokens = max(int(usage.get("output_tokens") or 0), 0)
+    # USD / 1M tokens is numerically equal to micro-USD / token.
+    return round(
+        uncached_tokens * pricing["input"]
+        + cached_tokens * pricing["cached"]
+        + output_tokens * pricing["output"]
+    )
+
+
+def track_ai_usage(operation: str):
+    """Persist provider token telemetry without making the user request depend on it."""
+    def decorator(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            with collect_ai_usage() as usage_records:
+                try:
+                    return view(*args, **kwargs)
+                finally:
+                    if usage_records:
+                        client = _authenticated_client()
+                        if client:
+                            for usage in usage_records:
+                                try:
+                                    client.rpc("record_ai_provider_usage", {
+                                        "p_operation": operation,
+                                        "p_model": usage.get("model") or "unknown",
+                                        "p_input_tokens": usage.get("input_tokens", 0),
+                                        "p_cached_input_tokens": usage.get("cached_input_tokens", 0),
+                                        "p_output_tokens": usage.get("output_tokens", 0),
+                                        "p_estimated_cost_microusd": _estimated_cost_microusd(usage),
+                                        "p_provider_request_id": usage.get("request_id"),
+                                    }).execute()
+                                except Exception:
+                                    logging.exception("Could not record AI provider usage")
+        return wrapped
+    return decorator
+
+
+def _reserve_entitlement(client, operation: str):
+    try:
+        result = client.rpc("reserve_ai_entitlement", {"p_operation": operation}).execute()
+        entitlement = result.data or {}
+        if entitlement.get("allowed"):
+            return entitlement, None
+        noun = "flowchart generations" if operation == "generation" else "AI edits"
+        return None, (jsonify({
+            "error": f"You've used all free {noun}. Your existing designs and manual editing are still available.",
+            "code": entitlement.get("code") or "trial_exhausted",
+        }), 402)
+    except Exception:
+        logging.exception("AI entitlement check failed")
+        return None, (jsonify({"error": "Trial usage is not configured. Run the latest Supabase schema."}), 503)
+
+
+def _refund_entitlement(client, operation: str):
+    try:
+        client.rpc("refund_ai_entitlement", {"p_operation": operation}).execute()
+    except Exception:
+        logging.exception("Could not refund failed AI entitlement")
+
+
+def _require_entitlement_available(client, operation: str):
+    """Block further provider spend once a free allowance has been exhausted."""
+    try:
+        result = client.rpc("get_ai_entitlements").execute()
+        entitlement = result.data or {}
+        if entitlement.get("plan", "free") != "free":
+            return None
+        remaining_key = "generations_remaining" if operation == "generation" else "edits_remaining"
+        if int(entitlement.get(remaining_key, 0)) > 0:
+            return None
+        code = "generation_trial_exhausted" if operation == "generation" else "edit_trial_exhausted"
+        return jsonify({
+            "error": "Your free AI allowance has been used. Existing designs and manual editing are still available.",
+            "code": code,
+        }), 402
+    except Exception:
+        logging.exception("Could not read AI entitlements")
+        return jsonify({"error": "Trial usage is not configured. Run the latest Supabase schema."}), 503
+
+
+def charge_entitlement(operation: str):
+    """Charge a legacy one-shot AI route, refunding any unsuccessful response."""
+    def decorator(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            client = _authenticated_client()
+            entitlement, entitlement_error = _reserve_entitlement(client, operation)
+            if entitlement_error:
+                return entitlement_error
+            try:
+                response = view(*args, **kwargs)
+                status_code = response[1] if isinstance(response, tuple) else getattr(response, "status_code", 200)
+                if int(status_code) >= 400:
+                    _refund_entitlement(client, operation)
+                return response
+            except Exception:
+                _refund_entitlement(client, operation)
+                raise
+        return wrapped
+    return decorator
+
+
 def _auth_tokens():
     access_token = session.get("supabase_access_token")
     refresh_token = session.get("supabase_refresh_token")
     if not access_token or not refresh_token:
         return None
     return access_token, refresh_token
+
+
+def _clear_and_rotate_session():
+    """Clear auth state and prevent older concurrent requests reusing its session ID."""
+    regenerate = getattr(app.session_interface, "regenerate", None)
+    if callable(regenerate):
+        # Flask-Session only regenerates a non-empty session. Authentication
+        # sessions are normally non-empty, while the marker covers reset flows.
+        if not session:
+            session["_rotation_marker"] = True
+        regenerate(session)
+    session.clear()
 
 
 def _authenticated_client():
@@ -216,15 +348,17 @@ def _authenticated_client():
         client = user_client(*tokens)
         verified = client.auth.get_user(tokens[0])
         if not getattr(verified, "user", None):
-            session.clear()
+            _clear_and_rotate_session()
             return None
         refreshed = client.auth.get_session()
         if refreshed:
-            session["supabase_access_token"] = refreshed.access_token
-            session["supabase_refresh_token"] = refreshed.refresh_token
+            if session.get("supabase_access_token") != refreshed.access_token:
+                session["supabase_access_token"] = refreshed.access_token
+            if session.get("supabase_refresh_token") != refreshed.refresh_token:
+                session["supabase_refresh_token"] = refreshed.refresh_token
         return client
     except Exception:
-        session.clear()
+        _clear_and_rotate_session()
         return None
 
 
@@ -289,12 +423,20 @@ def signup():
         })
         auth_session = getattr(response, "session", None)
         if auth_session:
+            _clear_and_rotate_session()
             session["supabase_access_token"] = auth_session.access_token
             session["supabase_refresh_token"] = auth_session.refresh_token
+        created_user = getattr(response, "user", None)
+        created_metadata = (getattr(created_user, "user_metadata", None) or {}) if created_user else {}
         return jsonify({
             "message": "Account created. Check your email to confirm it before logging in."
                 if not auth_session else "Account created.",
             "logged_in": bool(auth_session),
+            "user": ({
+                "id": str(created_user.id),
+                "email": created_user.email,
+                "username": created_metadata.get("username") or email.split("@")[0],
+            } if auth_session and created_user else None),
         }), 201
     except SupabaseConfigurationError as exc:
         return jsonify({"error": str(exc)}), 503
@@ -315,7 +457,7 @@ def login():
     try:
         response = public_client().auth.sign_in_with_password({"email": email, "password": password})
         auth_session = response.session
-        session.clear()
+        _clear_and_rotate_session()
         session["supabase_access_token"] = auth_session.access_token
         session["supabase_refresh_token"] = auth_session.refresh_token
         user = response.user
@@ -342,7 +484,7 @@ def logout():
             client.auth.sign_out()
         except Exception:
             pass
-    session.clear()
+    _clear_and_rotate_session()
     return jsonify({"logged_in": False})
 
 
@@ -387,7 +529,7 @@ def complete_password_reset():
         if not getattr(verified, "user", None):
             return jsonify({"error": "This password-reset link is invalid or expired."}), 400
         client.auth.update_user({"password": password})
-        session.clear()
+        _clear_and_rotate_session()
         return jsonify({"message": "Password updated. You can now log in."})
     except Exception:
         logging.exception("Password reset completion failed")
@@ -408,7 +550,8 @@ def profile():
                 "plan": "free",
             }
             profile_data["email"] = user["email"]
-            return jsonify({"profile": profile_data})
+            entitlement_result = client.rpc("get_ai_entitlements").execute()
+            return jsonify({"profile": profile_data, "entitlements": entitlement_result.data or {}})
 
         data = request.get_json(silent=True) or {}
         username = str(data.get("username", "")).strip()
@@ -509,6 +652,35 @@ def designs():
                 "code": "design_limit_reached", "limit": MAX_DESIGNS_PER_USER,
             }), 403
         return _server_error("Could not save design.")
+
+
+@app.route("/feedback", methods=["POST"])
+@login_required
+def submit_feedback():
+    data = request.get_json(silent=True) or {}
+    try:
+        rating = int(data.get("rating"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Choose a rating from 1 to 5."}), 400
+    try:
+        message = _bounded_text(data.get("message"), "Feedback", 2_000, required=True)
+        context = _bounded_text(data.get("context") or "general", "Feedback context", 80)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if rating < 1 or rating > 5:
+        return jsonify({"error": "Choose a rating from 1 to 5."}), 400
+    client = _authenticated_client()
+    try:
+        result = client.rpc("submit_feedback", {
+            "p_rating": rating,
+            "p_message": message,
+            "p_context": context or "general",
+        }).execute()
+        return jsonify({"submitted": True, "id": result.data}), 201
+    except Exception as exc:
+        if "feedback_limit_reached" in str(exc):
+            return jsonify({"error": "You've sent several responses today. Please try again tomorrow."}), 429
+        return _server_error("Could not send feedback.")
 
 
 @app.route("/designs/<design_id>", methods=["GET", "PATCH", "DELETE"])
@@ -623,6 +795,8 @@ def get_version(version_id):
 
 @app.route("/generate", methods=["POST"])
 @login_required
+@charge_entitlement("generation")
+@track_ai_usage("generate")
 def generate():
     quota_error = _consume_ai_quota("generate")
     if quota_error:
@@ -659,10 +833,14 @@ def generate():
 
 @app.route("/live_update", methods=["POST"])
 @login_required
+@track_ai_usage("live_update")
 def live_update():
     quota_error = _consume_ai_quota("live_update")
     if quota_error:
         return quota_error
+    entitlement_error = _require_entitlement_available(_authenticated_client(), "generation")
+    if entitlement_error:
+        return entitlement_error
     data = request.get_json(silent=True) or {}
     try:
         transcript = _bounded_text(data.get("transcript"), "Transcript", MAX_TRANSCRIPT_CHARS)
@@ -678,10 +856,14 @@ def live_update():
 
 @app.route("/live_title", methods=["POST"])
 @login_required
+@track_ai_usage("live_title")
 def live_title():
     quota_error = _consume_ai_quota("live_title")
     if quota_error:
         return quota_error
+    entitlement_error = _require_entitlement_available(_authenticated_client(), "generation")
+    if entitlement_error:
+        return entitlement_error
     data = request.get_json(silent=True) or {}
     try:
         flowchart_data = _validated_graph(data.get("graph") or {"nodes": [], "edges": []})
@@ -695,6 +877,7 @@ def live_title():
 
 @app.route("/finalize", methods=["POST"])
 @login_required
+@track_ai_usage("finalize")
 def finalize_endpoint():
     quota_error = _consume_ai_quota("finalize")
     if quota_error:
@@ -706,8 +889,20 @@ def finalize_endpoint():
         gestures = _validated_gestures(data.get("gestures"))
         if moderate_text(transcript):
             return jsonify({"error": "This content can't be turned into a flowchart."}), 400
-        cleaned = build_layout_plan(Flowchart.from_dict(finalize_graph(flowchart_data, transcript, gestures)))
-        return jsonify({"graph": cleaned.to_dict(), "title": generate_title(cleaned.to_dict())})
+        client = _authenticated_client()
+        entitlement, entitlement_error = _reserve_entitlement(client, "generation")
+        if entitlement_error:
+            return entitlement_error
+        try:
+            cleaned = build_layout_plan(Flowchart.from_dict(finalize_graph(flowchart_data, transcript, gestures)))
+            return jsonify({
+                "graph": cleaned.to_dict(),
+                "title": generate_title(cleaned.to_dict()),
+                "generations_remaining": entitlement.get("remaining"),
+            })
+        except Exception:
+            _refund_entitlement(client, "generation")
+            raise
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception:
@@ -716,6 +911,7 @@ def finalize_endpoint():
 
 @app.route("/ai_edit", methods=["POST"])
 @login_required
+@track_ai_usage("ai_edit")
 def ai_edit():
     """Apply a focused natural-language edit to the current workflow."""
     quota_error = _consume_ai_quota("ai_edit")
@@ -728,8 +924,20 @@ def ai_edit():
         started_at = time.perf_counter()
         if moderate_text(instruction):
             return jsonify({"error": "That edit instruction cannot be processed."}), 400
-        edited = edit_flowchart_with_prompt(graph, instruction)
-        return jsonify({"graph": edited, "elapsed_ms": round((time.perf_counter() - started_at) * 1000)})
+        client = _authenticated_client()
+        entitlement, entitlement_error = _reserve_entitlement(client, "edit")
+        if entitlement_error:
+            return entitlement_error
+        try:
+            edited = edit_flowchart_with_prompt(graph, instruction)
+            return jsonify({
+                "graph": edited,
+                "elapsed_ms": round((time.perf_counter() - started_at) * 1000),
+                "edits_remaining": entitlement.get("remaining"),
+            })
+        except Exception:
+            _refund_entitlement(client, "edit")
+            raise
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception:
@@ -738,6 +946,7 @@ def ai_edit():
 
 @app.route("/export_pdf", methods=["POST"])
 @login_required
+@track_ai_usage("export")
 def export_pdf():
     quota_error = _consume_ai_quota("export")
     if quota_error:
@@ -765,6 +974,7 @@ def export_pdf():
 
 @app.route("/export/<output_format>", methods=["POST"])
 @login_required
+@track_ai_usage("export")
 def export_format(output_format):
     """Export the finalized canonical workflow as PDF, SVG, or PNG."""
     output_format = output_format.lower()

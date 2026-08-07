@@ -26,7 +26,9 @@ In the Supabase dashboard, open **SQL Editor**, paste the contents of
 `supabase_schema.sql`, and run it once.
 
 The schema includes profiles, saved designs, version history, RLS policies,
-atomic three-design/version functions, and database-backed AI usage quotas.
+atomic three-design/version functions, database-backed AI usage quotas, free-trial
+entitlements (three generations and ten AI edits), provider token telemetry, and
+private-beta feedback submissions.
 
 ## 3. Authentication redirect URLs
 
@@ -57,4 +59,5 @@ Then open `http://localhost:5000`.
 
 ## Updating an existing Supabase project
 
-Run the full `supabase_schema.sql` again after installing this build. The script is idempotent and adds the `design_versions` table plus its Row Level Security policies.
+Run the full `supabase_schema.sql` again after installing this build. The script is
+idempotent and adds the latest entitlement, usage, and Row Level Security changes.
