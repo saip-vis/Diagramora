@@ -2,7 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Voice to Flowchart</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice to Flowchart | Turn speech into editable diagrams</title>
+<meta name="description" content="Explain a process naturally and turn it into a structured, editable flowchart.">
+<meta name="theme-color" content="#0B2545">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Voice to Flowchart">
+<meta property="og:description" content="Turn a spoken process into a structured, editable flowchart.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Voice to Flowchart">
+<meta name="twitter:description" content="Turn a spoken process into a structured, editable flowchart.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.5.0/dist/svg2pdf.umd.min.js"></script>
@@ -22,6 +32,21 @@
     --radius-lg: 22px;
     --shadow-sm: 0 4px 16px rgba(11,37,69,.07);
     --shadow-md: 0 16px 45px rgba(11,37,69,.12);
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --text-xs: .78rem;
+    --text-sm: .9rem;
+    --text-md: 1rem;
+    --text-lg: 1.25rem;
+    --weight-medium: 600;
+    --weight-bold: 750;
+    --duration-fast: 160ms;
+    --duration-standard: 240ms;
+    --ease-standard: cubic-bezier(.2,.7,.2,1);
   }
   * { box-sizing: border-box; }
   :focus-visible { outline: 3px solid rgba(40,95,143,.35); outline-offset: 2px; }
@@ -30,7 +55,11 @@
     margin: 0;
     color: var(--black);
     background: var(--page-bg);
+    line-height: 1.55;
   }
+  button, input, textarea, select { font: inherit; }
+  button { transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
+  button:not(:disabled):active { transform: translateY(1px); }
 
   /* ---------- Header ---------- */
   header {
@@ -56,7 +85,7 @@
     padding: 9px 11px;
     margin: 0;
     border-radius: 8px;
-    transition: color .15s ease, background .15s ease;
+    transition: color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
   }
   nav button:hover { color:#fff; background:rgba(255,255,255,.08); }
   nav button.active { color: var(--white); background:rgba(255,255,255,.13); }
@@ -77,17 +106,17 @@
     gap: clamp(38px, 5vw, 78px);
     padding: 64px 0 72px;
   }
-  .landing-copy h1 { margin: 0; max-width: 885px; text-align: left; font-size: clamp(3.3rem, 6.6vw, 6.32rem); line-height: 1.02; letter-spacing: -.055em; }
-  .landing-copy p { max-width: 800px; margin: 31px 0 0; text-align: left; font-size: 1.51rem; line-height: 1.65; color: #52687d; }
-  .landing-eyebrow { margin-bottom: 25px; color: #285f8f; font-size: 1.06rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .landing-copy h1 { margin: 0; max-width: 830px; text-align: left; font-size: clamp(3.2rem, 6.15vw, 5.9rem); line-height: 1.02; letter-spacing: -.055em; }
+  .landing-copy p { max-width: 750px; margin: 29px 0 0; text-align: left; font-size: 1.4rem; line-height: 1.65; color: #52687d; }
+  .landing-eyebrow { margin-bottom: 23px; color: #285f8f; font-size: 1rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
   .landing-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
-  .landing-actions .action-btn { min-width: 205px; min-height: 56px; font-size: 1.17rem; }
+  .landing-actions .action-btn { min-width: 192px; min-height: 52px; font-size: 1.08rem; }
   .landing-note { margin-top: 14px; color: #718096; font-size: .82rem; }
-  .flow-demo { position: relative; min-height: 646px; padding: 49px; border: 1px solid #b9c7d8; border-radius: 29px; background: rgba(255,255,255,.76); box-shadow: 0 24px 70px rgba(11,37,69,.14); overflow: hidden; }
+  .flow-demo { position: relative; min-height: 610px; padding: 45px; border: 1px solid #b9c7d8; border-radius: 27px; background: rgba(255,255,255,.76); box-shadow: 0 24px 70px rgba(11,37,69,.14); overflow: hidden; }
   .flow-demo::before { content: "LIVE WORKFLOW"; display: block; margin-bottom: 26px; color: #718096; font-size: .7rem; font-weight: 800; letter-spacing: .13em; }
-  .demo-node { position: relative; z-index: 1; width: min(316px, 78%); margin: 0 auto; padding: 18px 25px; border: 2px solid var(--dark-blue); border-radius: 12px; background: #fff; color: var(--dark-blue); text-align: center; font-size: 1.17rem; font-weight: 700; box-shadow: 0 5px 16px rgba(11,37,69,.08); }
-  .demo-node.start, .demo-node.end { width: 143px; border-radius: 999px; background: var(--dark-blue); color: #fff; }
-  .demo-node.decision { width: 187px; border-radius: 23px; transform: rotate(3deg); }
+  .demo-node { position: relative; z-index: 1; width: min(296px, 78%); margin: 0 auto; padding: 16px 23px; border: 2px solid var(--dark-blue); border-radius: 12px; background: #fff; color: var(--dark-blue); text-align: center; font-size: 1.08rem; font-weight: 700; box-shadow: 0 5px 16px rgba(11,37,69,.08); }
+  .demo-node.start, .demo-node.end { width: 134px; border-radius: 999px; background: var(--dark-blue); color: #fff; }
+  .demo-node.decision { width: 176px; border-radius: 23px; transform: rotate(3deg); }
   .demo-node.decision span { display: block; transform: rotate(-3deg); }
   .demo-arrow { height: 39px; width: 2px; margin: 0 auto; background: var(--dark-blue); position: relative; }
   .demo-arrow::after { content: ""; position: absolute; bottom: -1px; left: -4px; border: 5px solid transparent; border-top-color: var(--dark-blue); }
@@ -107,8 +136,8 @@
   .demo-caption { position: absolute; right: 20px; bottom: 18px; color: #718096; font-size: .75rem; }
   .landing-copy { min-width: 0; }
   .landing-feedback-wrap { display:flex; justify-content:flex-end; margin:-30px 0 12px; padding-right:4px; }
-  .landing-feedback-card { display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:15px; width:min(440px,100%); margin:0; padding:21px 22px; border:1px solid #b9c7d8; border-radius:16px; background:rgba(255,255,255,.86); color:var(--dark-blue); text-align:left; box-shadow:0 9px 28px rgba(11,37,69,.09); cursor:pointer; transform:translate(150%,200%); transform-origin:right center; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
-  .landing-feedback-card:hover, .landing-feedback-card:focus-visible { transform:translate(150%,200%) scale(1.05); border-color:#8da9c4; box-shadow:0 14px 34px rgba(11,37,69,.14); }
+  .landing-feedback-card { display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:15px; width:min(440px,100%); margin:0; padding:21px 22px; border:1px solid #b9c7d8; border-radius:var(--radius-md); background:rgba(255,255,255,.86); color:var(--dark-blue); text-align:left; box-shadow:var(--shadow-sm); cursor:pointer; transform:translate(150%,200%); transform-origin:right center; transition:transform var(--duration-standard) var(--ease-standard), box-shadow var(--duration-standard) var(--ease-standard), border-color var(--duration-standard) var(--ease-standard); }
+  .landing-feedback-card:hover, .landing-feedback-card:focus-visible { transform:translate(150%,calc(200% - 3px)); border-color:#8da9c4; box-shadow:var(--shadow-md); }
   .landing-feedback-icon { display:grid; place-items:center; width:48px; height:48px; border-radius:12px; background:#e8f1f8; color:#285f8f; font-size:1.2rem; }
   .landing-feedback-card strong { display:block; margin-bottom:4px; font-size:1.05rem; }
   .landing-feedback-card small { display:block; color:#60758a; font-size:.85rem; line-height:1.45; }
@@ -130,7 +159,25 @@
     .flow-demo { min-height: 440px; }
     .landing-feedback-wrap { justify-content:center; margin-top:10px; }
     .landing-feedback-card { transform:translate(0,0); transform-origin:center; }
-    .landing-feedback-card:hover, .landing-feedback-card:focus-visible { transform:scale(1.05); }
+    .landing-feedback-card:hover, .landing-feedback-card:focus-visible { transform:translateY(-3px); }
+  }
+
+  #mobileLandingCta { display:none; }
+  .design-skeleton { min-height:310px; overflow:hidden; }
+  .skeleton-line, .skeleton-preview { position:relative; overflow:hidden; border-radius:var(--radius-sm); background:#dfe8f1; }
+  .skeleton-line::after, .skeleton-preview::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent); animation:skeleton-sweep 1.25s var(--ease-standard) infinite; }
+  .skeleton-line { width:70%; height:18px; margin-bottom:10px; }
+  .skeleton-line.short { width:42%; height:13px; }
+  .skeleton-preview { height:220px; margin-top:18px; }
+  @keyframes skeleton-sweep { to { transform:translateX(100%); } }
+
+  @media (max-width: 700px) {
+    #page-landing.active #mobileLandingCta { position:fixed; z-index:30; left:16px; right:16px; bottom:16px; display:block; width:calc(100% - 32px); min-height:50px; margin:0; box-shadow:var(--shadow-md); }
+    body:has(#page-landing.active) footer { padding-bottom:84px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
   }
 
   h1 { font-size: 1.4rem; font-weight: 600; text-align: center; color: var(--dark-blue); }
@@ -159,7 +206,7 @@
   #page-home > #recordBtn {
     min-width: 190px;
     min-height: 58px;
-    margin-top: 30px;
+    margin: 30px auto 0;
     padding: 15px 34px;
     border-radius: 11px;
     font-size: 1.12rem;
@@ -180,7 +227,7 @@
   .onboarding-step span:last-child { color:var(--muted); font-size:.78rem; line-height:1.45; }
   #page-home.workspace-active .workspace-intro,
   #page-home.workspace-active .workspace-onboarding { display:none; }
-  #page-home.workspace-active > #recordBtn { margin-top:4px; }
+  #page-home.workspace-active > #recordBtn { margin:4px auto 0; }
   @media (max-width: 700px) {
     .workspace-intro h1 { margin-top: 22px; font-size: clamp(2.35rem, 11vw, 3.2rem); }
     .workspace-intro p { font-size: 1.05rem; }
@@ -260,6 +307,9 @@
     transform: scaleX(-1);
   }
   #gestureHint { margin-top: 8px; font-size: 0.85rem; color: #667; min-height: 1.2em; text-align: center; }
+  #cameraStatus { width:fit-content; max-width:min(560px,calc(100% - 28px)); margin:12px auto 0; padding:7px 11px; border:1px solid #c9d5e1; border-radius:999px; background:rgba(255,255,255,.72); color:#52687d; font-size:.78rem; font-weight:650; text-align:center; }
+  #cameraStatus.active { border-color:#9fc8b2; background:#edf8f1; color:#276749; }
+  #cameraStatus.unavailable { border-color:#e8c7a5; background:#fff8ed; color:#8a4b16; }
 
   #liveGraphSection { display: none; flex: 2; min-width: 500px; }
   #liveGraphSection.active { display: block; }
@@ -381,7 +431,7 @@
     border-bottom: 1px solid #D9E3EC;
   }
   .editor-brand { display: flex; align-items: center; gap: 9px; color: var(--dark-blue); font-size: .95rem; }
-  .editor-brand::before { content: "✦"; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 8px; background: var(--dark-blue); color: #fff; font-size: .8rem; }
+  .editor-brand::before { content: "V→"; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 8px; background: var(--dark-blue); color: #fff; font-size: .62rem; }
   #editorToolbar button, #propertiesPanel button, #aiEditBtn {
     border: 1px solid #AFC0D1;
     background: white;
@@ -636,7 +686,7 @@
       <div class="landing-copy">
         <div class="landing-eyebrow">Explain it. See it.</div>
         <h1>Turn your spoken ideas into clear flowcharts.</h1>
-        <p>Describe a process naturally and Flowchart App turns your explanation into a structured, editable diagram—while you speak.</p>
+        <p>Describe a process naturally. Voice to Flowchart turns your explanation into a structured, editable diagram while you speak.</p>
         <div class="landing-actions">
           <button class="action-btn" id="landingSignupBtn" type="button">Create account</button>
           <button class="action-btn secondary" id="landingLoginBtn" type="button">Log in</button>
@@ -661,11 +711,12 @@
     </div>
     <div class="landing-feedback-wrap">
       <button class="landing-feedback-card" id="feedbackCard" type="button">
-        <span class="landing-feedback-icon">✦</span>
+        <span class="landing-feedback-icon" aria-hidden="true">?</span>
         <span><strong>Help improve Voice to Flowchart</strong><small>Share what worked or what felt confusing.</small></span>
         <span class="landing-feedback-arrow">→</span>
       </button>
     </div>
+    <button class="action-btn mobile-landing-cta" id="mobileLandingCta" type="button">Create account</button>
   </section>
 
   <!-- ---------- HOME / MAIN TOOL ---------- -->
@@ -686,6 +737,7 @@
     <button class="primary" id="recordBtn">Start Talking</button>
     <div id="spinner"></div>
     <div id="status"></div>
+    <div id="cameraStatus" role="status" aria-live="polite">Camera gestures are optional and will be requested when recording starts.</div>
     <div id="finalActions" class="action-row">
       <button class="action-btn secondary" id="editFlowchartBtn" type="button">Edit</button>
       <button class="action-btn" id="exportBtn" type="button">Download</button>
@@ -695,7 +747,7 @@
     <button class="primary" id="recordAgainBtn">Start Over</button>
 
     <div class="workspace-onboarding">
-      <div class="onboarding-step"><span class="onboarding-number">1</span><span><strong>Describe it naturally</strong><span>No diagram terminology needed—just explain what happens.</span></span></div>
+      <div class="onboarding-step"><span class="onboarding-number">1</span><span><strong>Describe it naturally</strong><span>No diagram terminology needed. Just explain what happens.</span></span></div>
       <div class="onboarding-step"><span class="onboarding-number">2</span><span><strong>Watch it take shape</strong><span>Speech and optional gestures become live nodes and branches.</span></span></div>
       <div class="onboarding-step"><span class="onboarding-number">3</span><span><strong>Review and refine</strong><span>Edit the result, save versions, and export when it feels right.</span></span></div>
     </div>
@@ -734,7 +786,7 @@
             <div id="propertyContent" class="editor-empty">Select a node or connection to edit it.</div>
           </aside>
           <div id="aiPromptBar">
-            <span class="ai-prompt-label">✦ Edit with AI</span>
+            <span class="ai-prompt-label">AI edit</span>
             <input id="aiEditInput" type="text" placeholder="Try: Add legal review after HR approval">
             <button type="button" id="aiEditBtn">Apply change</button>
           </div>
@@ -793,7 +845,7 @@
   <section class="page" id="page-about">
     <h1>About Voice to Flowchart</h1>
     <div class="about-card">
-      <p class="about-lead">Diagramming should begin with understanding—not drawing tools.</p>
+      <p class="about-lead">Diagramming should begin with understanding, not drawing tools.</p>
       <p>Voice to Flowchart is an early-stage project exploring a simpler way to turn spoken explanations into structured, editable workflows. The goal is to let people focus on the process they understand while the software handles nodes, branches, and layout.</p>
       <p>Flowcharts are the starting point. Over time, the same approach can support other structured visuals such as decision trees, system diagrams, UML, and organization charts.</p>
       <div class="about-values">
@@ -811,7 +863,7 @@
     <div class="faq-item">
       <div class="q">How do I use the gestures?</div>
       <div class="a">
-        Speak naturally while you record — gestures are optional and just help confirm or refine what you say. Here's what each one does:
+        Speak naturally while you record. Gestures are optional and help confirm or refine what you say. Here's what each one does:
         <div class="gesture-grid">
           <div class="gesture-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><path d="M7 11V7a2 2 0 0 1 4 0v4M11 11V5a2 2 0 0 1 4 0v6M15 11V7a2 2 0 0 1 4 0v6c0 3.5-2 6-6 6H9c-2 0-3-1-4-3l-1.5-3c-.5-1 .3-2 1.3-1.5L7 13"/></svg>
@@ -831,7 +883,7 @@
           <div class="gesture-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><path d="M4 12h13M13 7l5 5-5 5"/></svg>
             <div class="gname">👉 Swipe Right</div>
-            <div class="gmeaning">"After this" — links the subject before and after the swipe in sequence.</div>
+            <div class="gmeaning">"After this" links the subject before and after the swipe in sequence.</div>
           </div>
           <div class="gesture-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><path d="M20 12H7M11 7l-5 5 5 5"/></svg>
@@ -841,12 +893,12 @@
           <div class="gesture-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><path d="M9 12h6"/></svg>
             <div class="gname">🙌 Two-Hand Branch</div>
-            <div class="gmeaning">Both palms open, one on each side of frame — splits the current subject into two separate paths.</div>
+            <div class="gmeaning">Both palms open, one on each side of frame, splits the current subject into two separate paths.</div>
           </div>
           <div class="gesture-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="#0B2545" stroke-width="1.6"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M4 11h16"/></svg>
             <div class="gname">📦 Box Motion</div>
-            <div class="gmeaning">Spread two fingers apart, then bring them back together — marks the current idea as its own separate node.</div>
+            <div class="gmeaning">Spread two fingers apart, then bring them back together to mark the current idea as its own separate node.</div>
           </div>
         </div>
       </div>
@@ -854,7 +906,7 @@
 
     <div class="faq-item">
       <div class="q">Do I need to record on a specific browser?</div>
-      <div class="a">Yes — live transcription uses your browser's built-in speech recognition, which currently works reliably in Chrome. Other browsers may not support it.</div>
+      <div class="a">Yes. Live transcription uses your browser's built-in speech recognition, which currently works reliably in Chrome. Other browsers may not support it.</div>
     </div>
 
     <div class="faq-item">
@@ -864,7 +916,7 @@
 
     <div class="faq-item">
       <div class="q">Why does the flowchart sometimes look messy while I'm still talking?</div>
-      <div class="a">The live view prioritizes speed, so it builds the graph in real time as you speak — occasionally producing a rough or duplicate node. Once you click Stop, a final cleanup pass double-checks everything against your full explanation before the downloadable version is created.</div>
+      <div class="a">The live view prioritizes speed, so it builds the graph in real time as you speak. This can occasionally produce a rough or duplicate node. Once you click Stop, a final cleanup pass checks everything against your full explanation before the downloadable version is created.</div>
     </div>
 
     <div class="faq-item">
@@ -879,7 +931,7 @@
 
     <div class="faq-item">
       <div class="q">What do the thick and thin lines mean?</div>
-      <div class="a">Thick lines mark the main, expected path through your process. Thin lines mark secondary paths — like error handling, rejections, or side branches.</div>
+      <div class="a">Thick lines mark the main, expected path through your process. Thin lines mark secondary paths such as error handling, rejections, or side branches.</div>
     </div>
   </section>
 
@@ -892,7 +944,7 @@
       <p>Flowchart App processes the account information you provide, your transcribed process descriptions, detected gesture names and timestamps, generated flowchart data, designs you choose to save, and feedback you choose to submit.</p>
 
       <h2>Microphone and camera use</h2>
-      <p>The current browser experience uses your microphone for speech recognition and your camera for live hand-landmark detection. Camera frames are processed in the browser and are not intentionally stored by Flowchart App. Speech recognition may be processed by your browser or browser provider. The resulting transcript—not your live camera feed—is sent to the application to generate a flowchart.</p>
+      <p>The current browser experience uses your microphone for speech recognition and your camera for live hand-landmark detection. Camera frames are processed in the browser and are not intentionally stored by Flowchart App. Speech recognition may be processed by your browser or browser provider. The resulting transcript, not your live camera feed, is sent to the application to generate a flowchart.</p>
 
       <h2>AI and service providers</h2>
       <p>Transcript text, gesture events, and relevant flowchart data may be sent to OpenAI to generate, repair, title, or edit diagrams. Supabase is used for account authentication and for storing profiles, saved designs, transcripts, version snapshots, trial usage, and technical AI usage metadata such as model names and token counts.</p>
@@ -961,7 +1013,7 @@
   <div class="modal-card">
     <h2 id="trialLimitHeading">Free trial limit reached</h2>
     <p id="trialLimitDescription">You’ve used your free AI allowance.</p>
-    <p>Your existing designs are safe—you can still open them, make manual edits, save changes, and export them.</p>
+    <p>Your existing designs are safe. You can still open them, make manual edits, save changes, and export them.</p>
     <div class="modal-actions">
       <button class="action-btn secondary" id="closeTrialLimitBtn" type="button">Keep editing</button>
       <button class="action-btn" id="viewUsageBtn" type="button">View usage</button>
@@ -1102,6 +1154,18 @@
       document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
       const page = document.getElementById("page-" + pageName);
       if (page) page.classList.add("active");
+      const pageMeta = {
+        landing: ["Voice to Flowchart | Turn speech into editable diagrams", "Explain a process naturally and turn it into a structured, editable flowchart."],
+        home: ["Workspace | Voice to Flowchart", "Create and refine an editable flowchart from your spoken process."],
+        designs: ["My Designs | Voice to Flowchart", "Open, organize, and continue editing your saved flowcharts."],
+        account: ["Account | Voice to Flowchart", "Manage your Voice to Flowchart profile and usage."],
+        about: ["About | Voice to Flowchart", "Learn why Voice to Flowchart starts with explaining a process instead of drawing it."],
+        faq: ["Help and FAQ | Voice to Flowchart", "Answers about recording, privacy, editing, exports, gestures, and free usage."],
+        privacy: ["Privacy Policy | Voice to Flowchart", "How Voice to Flowchart handles account, transcript, gesture, and diagram data."]
+      };
+      const [title, description] = pageMeta[pageName] || pageMeta.landing;
+      document.title = title;
+      document.querySelector('meta[name="description"]')?.setAttribute("content", description);
     }
     document.querySelectorAll(".nav-btn[data-page]").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1128,6 +1192,7 @@
     const recordAgainBtn = document.getElementById("recordAgainBtn");
     const spinner = document.getElementById("spinner");
     const status = document.getElementById("status");
+    const cameraStatus = document.getElementById("cameraStatus");
     const downloadLink = document.getElementById("downloadLink");
     const workArea = document.getElementById("workArea");
     const videoContainer = document.getElementById("videoContainer");
@@ -1343,7 +1408,11 @@
         lines.push("  end");
       });
 
-      for (const edge of graph.edges || []) {
+      const declaredNodeIds = new Set((graph.nodes || []).map(node => String(node.id)));
+      const validEdges = (graph.edges || []).filter(edge =>
+        declaredNodeIds.has(String(edge.from)) && declaredNodeIds.has(String(edge.to))
+      );
+      for (const edge of validEdges) {
         const from = safeNodeId(edge.from);
         const to = safeNodeId(edge.to);
         const layoutRole = edge.metadata && edge.metadata.layout
@@ -1378,7 +1447,7 @@
         if (style.fontFamily) parts.push(`font-family:${style.fontFamily}`);
         if (parts.length) lines.push(`  style ${safeNodeId(node.id)} ${parts.join(",")}`);
       }
-      (graph.edges || []).forEach((edge, index) => {
+      validEdges.forEach((edge, index) => {
         const style = edge.metadata && edge.metadata.editor_style ? edge.metadata.editor_style : {};
         const parts = [];
         if (style.stroke) parts.push(`stroke:${style.stroke}`);
@@ -1393,9 +1462,12 @@
     async function renderLiveGraph(graph) {
       if (!mermaidReady) return;
       const code = graphToMermaid(graph);
-      renderCount++;
+      const thisRender = ++renderCount;
       try {
-        const { svg } = await mermaid.render("livegraph" + renderCount, code);
+        const { svg } = await mermaid.render("livegraph" + thisRender, code);
+        // A faster provisional or AI render may have completed while Mermaid
+        // was working. Never let an older result overwrite the newest graph.
+        if (thisRender !== renderCount) return;
         graphContainer.innerHTML = svg;
         applyEditorNodeSizing();
         applyEditorEdgeShapes();
@@ -1911,6 +1983,7 @@
       loginNavBtn.classList.toggle("logout-action", loggedIn);
       document.getElementById("landingSignupBtn").classList.toggle("hidden", loggedIn);
       document.getElementById("landingLoginBtn").textContent = loggedIn ? "Open workspace" : "Log in";
+      document.getElementById("mobileLandingCta").textContent = loggedIn ? "Open workspace" : "Create account";
       if (!loggedIn && ["home", "designs", "account"].some(page => document.getElementById(`page-${page}`).classList.contains("active"))) {
         showPage("landing");
       }
@@ -1950,6 +2023,7 @@
     }
     document.getElementById("landingLoginBtn").onclick = () => isLoggedIn ? showPage("home") : openAuthModal("login");
     document.getElementById("landingSignupBtn").onclick = () => openAuthModal("signup");
+    document.getElementById("mobileLandingCta").onclick = () => isLoggedIn ? showPage("home") : openAuthModal("signup");
     document.getElementById("authPrivacyLink").onclick = () => {
       loginModal.classList.remove("active");
       showPage("privacy");
@@ -2063,6 +2137,7 @@
       document.querySelectorAll("#feedbackRating button").forEach(button => button.classList.remove("selected"));
       document.getElementById("feedbackMessage").value = "";
       document.getElementById("feedbackStatus").textContent = "";
+      document.getElementById("submitFeedbackBtn").textContent = "Send feedback";
       feedbackModal.classList.add("active");
       document.getElementById("feedbackMessage").focus();
     }
@@ -2081,17 +2156,21 @@
       if (!message) { feedbackStatus.textContent = "Write a short note before sending."; return; }
       const button = document.getElementById("submitFeedbackBtn");
       button.disabled = true;
+      const defaultLabel = button.textContent;
+      button.textContent = "Sending feedback…";
       feedbackStatus.textContent = "Sending…";
       try {
         const activePage = document.querySelector(".page.active")?.id?.replace("page-", "") || "general";
         const response = await accountFetch("/feedback", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({rating:selectedFeedbackRating,message,context:activePage})});
         const data = await response.json();
         if (!response.ok) throw new Error(friendlyRequestError(response, data, "Could not send feedback."));
-        feedbackModal.classList.remove("active");
-        notify("Thanks—your feedback was sent.", "success");
+        feedbackStatus.textContent = "Thank you. Your feedback was received.";
+        button.textContent = "Sent";
+        setTimeout(() => { feedbackModal.classList.remove("active"); button.textContent = defaultLabel; }, 700);
+        notify("Thank you. Your feedback was sent.", "success");
       } catch (err) {
         if (err.name !== "AbortError") feedbackStatus.textContent = err.message;
-      } finally { button.disabled = false; }
+      } finally { button.disabled = false; if (button.textContent !== "Sent") button.textContent = defaultLabel; }
     };
 
     function scheduleAutosave(delay = 1400) {
@@ -2249,9 +2328,12 @@
       grid.innerHTML = "";
       if (!isLoggedIn) { message.textContent = "Log in to view saved designs."; return; }
       message.textContent = "Loading designs…";
+      grid.setAttribute("aria-busy", "true");
+      grid.innerHTML = Array.from({length:3}, () => '<article class="design-card design-skeleton" aria-hidden="true"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-preview"></div></article>').join("");
       try {
         const response = await accountFetch("/designs"); const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not load designs");
+        grid.innerHTML = "";
         const usage = data.usage || {used:data.designs.length, limit:3, remaining:Math.max(0, 3 - data.designs.length)};
         document.getElementById("designUsage").textContent = `${usage.used} of ${usage.limit} designs`;
         message.textContent = data.designs.length ? "" : "No saved designs yet.";
@@ -2274,7 +2356,8 @@
           grid.appendChild(card);
           renderDesignPreview(card.querySelector(".design-preview-canvas"), design.preview_graph, design.id);
         });
-      } catch (err) { message.textContent = err.message; }
+      } catch (err) { grid.innerHTML = ""; message.textContent = err.message; }
+      finally { grid.removeAttribute("aria-busy"); }
     }
 
     function closeDeleteDesignDialog() {
@@ -2677,10 +2760,75 @@
     let periodicUpdateTimer = null;
     let titleUpdateTimer = null;
     let lastTitledNodeCount = 0;
+    let titleUpdateInFlight = false;
+    let provisionalRenderTimer = null;
     let currentTitle = "Flowchart";
 
     function combinedTranscript() {
       return (fullTranscript + " " + currentInterim).trim();
+    }
+
+    function cleanProvisionalLabel(value) {
+      const cleaned = String(value || "")
+        .replace(/^[\s,;:.]+|[\s,;:.]+$/g, "")
+        .replace(/^(?:and then|then|next|finally)\s+/i, "")
+        .replace(/^(?:i|we|they)\s+/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!cleaned) return "";
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
+
+    function buildProvisionalGraph(transcript) {
+      const text = String(transcript || "").replace(/\s+/g, " ").trim();
+      if (text.length < 8) return null;
+
+      const nodes = [{id:"preview_start", label:"Start", type:"start"}];
+      const edges = [];
+      const addNode = (label, type = "process") => {
+        const cleanLabel = cleanProvisionalLabel(label);
+        if (!cleanLabel || cleanLabel.split(/\s+/).length > 14) return null;
+        const node = {id:`preview_${nodes.length}`, label:cleanLabel, type, phase:"Live sketch", phase_order:1};
+        nodes.push(node);
+        return node;
+      };
+      const connect = (from, to, label = "", primary = true) => {
+        if (from && to) edges.push({from:from.id, to:to.id, label, primary});
+      };
+
+      // This deliberately handles only explicit conditional language. The AI
+      // remains responsible for ambiguous branches and for correcting labels.
+      const conditional = text.match(/^(.*?)\bif\s+([^,;]+?)[,]\s*(.+?)(?:;|\.)?\s*(?:otherwise|else)[,\s]+(.+?)[.!?]?$/i);
+      if (conditional) {
+        const first = addNode(conditional[1]);
+        const condition = addNode(`${cleanProvisionalLabel(conditional[2])}?`, "decision");
+        const yesStep = addNode(conditional[3]);
+        const noStep = addNode(conditional[4]);
+        connect(nodes[0], first || condition);
+        connect(first, condition);
+        connect(condition, yesStep, "Yes", true);
+        connect(condition, noStep, "No", false);
+      } else {
+        const parts = text.split(/(?:[.!?;]+|\b(?:and then|then|next|finally)\b)/i)
+          .map(cleanProvisionalLabel)
+          .filter(part => part && part.split(/\s+/).length >= 2)
+          .slice(0, 8);
+        let previous = nodes[0];
+        for (const part of parts) {
+          const node = addNode(part);
+          connect(previous, node);
+          if (node) previous = node;
+        }
+      }
+      return nodes.length > 1 ? {nodes, edges, phases:["Live sketch"], start_node_id:"preview_start"} : null;
+    }
+
+    function renderProvisionalTranscript(transcript) {
+      if (!transcript || transcript === lastUpdatedTranscript) return;
+      const preview = buildProvisionalGraph(transcript);
+      if (!preview) return;
+      document.getElementById("liveGraphLabel").textContent = "Sketching live";
+      renderLiveGraph(preview);
     }
 
     async function waitForLiveUpdates() {
@@ -2690,9 +2838,10 @@
     }
 
     async function refreshLiveTitle() {
-      if (!currentGraph.nodes || currentGraph.nodes.length === 0) return;
+      if (!currentGraph.nodes || currentGraph.nodes.length < 2 || titleUpdateInFlight) return;
       if (currentGraph.nodes.length === lastTitledNodeCount) return;
       lastTitledNodeCount = currentGraph.nodes.length;
+      titleUpdateInFlight = true;
       try {
         const response = await accountFetch("/live_title", {
           method: "POST",
@@ -2703,6 +2852,8 @@
         if (data.title) liveTitle.textContent = data.title;
       } catch (err) {
         console.error("Live title fetch failed:", err);
+      } finally {
+        titleUpdateInFlight = false;
       }
     }
 
@@ -2712,6 +2863,9 @@
         return;
       }
       const transcriptToSend = combinedTranscript();
+      // Do not spend an API round trip on an empty or already-processed transcript.
+      // This is especially important when Stop requests one final synchronization.
+      if (!transcriptToSend || transcriptToSend === lastUpdatedTranscript) return;
       updateInFlight = true;
       try {
         const response = await accountFetch("/live_update", {
@@ -2729,9 +2883,13 @@
           status.textContent = message;
           if (response.status === 429) notify(message, "error");
         } else {
+          const graphChanged = JSON.stringify(updated) !== JSON.stringify(currentGraph);
           currentGraph = updated;
           lastUpdatedTranscript = transcriptToSend;
-          await renderLiveGraph(currentGraph);
+          if (graphChanged) {
+            document.getElementById("liveGraphLabel").textContent = "Building live";
+            await renderLiveGraph(currentGraph);
+          }
         }
       } catch (err) {
         console.error("Live update failed:", err);
@@ -2761,6 +2919,8 @@
           }
         }
         currentInterim = interim;
+        clearTimeout(provisionalRenderTimer);
+        provisionalRenderTimer = setTimeout(() => renderProvisionalTranscript(combinedTranscript()), 180);
         if (hadNewFinal) {
           triggerLiveUpdate();
         }
@@ -2796,9 +2956,11 @@
       if (periodicUpdateTimer) { clearInterval(periodicUpdateTimer); periodicUpdateTimer = null; }
       if (titleUpdateTimer) { clearInterval(titleUpdateTimer); titleUpdateTimer = null; }
       clearTimeout(autosaveTimer);
+      clearTimeout(provisionalRenderTimer);
+      provisionalRenderTimer = null;
       restoreGraphPresentation();
       document.getElementById("page-home").classList.remove("workspace-active");
-      recordBtn.style.display = "inline-block";
+      recordBtn.style.display = "";
       recordBtn.disabled = false;
       recordBtn.classList.remove("recording");
       recordBtn.textContent = "Start Talking";
@@ -2807,6 +2969,8 @@
       finalActions.classList.remove("active");
       spinner.style.display = "none";
       status.textContent = "";
+      cameraStatus.className = "";
+      cameraStatus.textContent = "Camera gestures are optional and will be requested when recording starts.";
       gestureHint.textContent = "";
       videoContainer.classList.remove("active");
       liveGraphSection.classList.remove("active");
@@ -2841,6 +3005,8 @@
           video.srcObject.getTracks().forEach(track => track.stop());
         }
         videoContainer.classList.remove("active");
+        cameraStatus.className = "";
+        cameraStatus.textContent = "Camera off · recording complete.";
         recordBtn.classList.remove("recording");
         recordBtn.disabled = true;
         recordBtn.style.display = "none";
@@ -2906,20 +3072,35 @@
       spinner.style.display = "none";
 
       let gesturesAvailable = false;
+      cameraStatus.className = "";
+      cameraStatus.textContent = "Requesting camera access…";
       try {
-        await loadModel();
         const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
         video.srcObject = stream;
-        await new Promise(resolve => video.onloadeddata = resolve);
+        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+          await new Promise(resolve => video.addEventListener("loadeddata", resolve, {once:true}));
+        }
+        cameraStatus.textContent = "Camera connected · loading gesture recognition…";
+        await loadModel();
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         videoContainer.classList.add("active");
         gesturesAvailable = true;
+        cameraStatus.className = "active";
+        cameraStatus.textContent = "Camera gestures active · video stays in your browser.";
       } catch (err) {
         console.warn("Gesture input unavailable; continuing with speech only.", err);
+        if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
         video.srcObject = null;
         videoContainer.classList.remove("active");
-        notify("Camera gestures are unavailable, but you can continue with speech only.");
+        const permissionBlocked = err?.name === "NotAllowedError" || err?.name === "SecurityError";
+        cameraStatus.className = "unavailable";
+        cameraStatus.textContent = permissionBlocked
+          ? "Speech-only mode · allow Camera from the browser’s site controls, then try again."
+          : "Speech-only mode · the gesture engine could not load. Refresh and try again.";
+        notify(permissionBlocked
+          ? "Camera access was blocked. Allow it in your browser’s site controls to use gestures."
+          : "Camera gestures are unavailable, but you can continue with speech only.");
       }
       liveGraphSection.classList.add("active");
       document.getElementById("page-home").classList.add("workspace-active");
@@ -2942,7 +3123,7 @@
         }
       }, 1300);
 
-      titleUpdateTimer = setInterval(refreshLiveTitle, 3000);
+      titleUpdateTimer = setInterval(refreshLiveTitle, 5000);
 
       detecting = gesturesAvailable;
       if (gesturesAvailable) detectLoop();

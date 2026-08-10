@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_file, session
+from flask import Flask, Response, jsonify, render_template, request, send_file, session
 from flask_session import Session
 from dotenv import load_dotenv
 
@@ -93,7 +93,7 @@ def add_security_headers(response):
     response.headers.setdefault("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()")
     response.headers.setdefault(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; "
         "connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com; "
         "worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
@@ -120,8 +120,8 @@ def request_too_large(_error):
     return jsonify({"error": "Request is too large. Shorten the recording or flowchart and try again."}), 413
 
 
-def _public_rate_limited(scope: str, limit: int, window_seconds: int) -> bool:
-    """Small local safeguard for unauthenticated auth endpoints."""
+def _public_rate_limited(scope: str, limit: int, window_seconds: int, *, record_attempt: bool = True) -> bool:
+    """Check a local unauthenticated rate limit and optionally record the attempt."""
     key = (scope, request.remote_addr or "unknown")
     now = time.monotonic()
     with _public_attempts_lock:
@@ -130,7 +130,8 @@ def _public_rate_limited(scope: str, limit: int, window_seconds: int) -> bool:
             attempts.popleft()
         if len(attempts) >= limit:
             return True
-        attempts.append(now)
+        if record_attempt:
+            attempts.append(now)
     return False
 
 
@@ -404,6 +405,37 @@ def index():
     return render_template("index.html")
 
 
+@app.get("/favicon.svg")
+def favicon():
+    return send_file(Path(__file__).with_name("favicon.svg"), mimetype="image/svg+xml", max_age=86400)
+
+
+@app.get("/robots.txt")
+def robots():
+    base_url = request.url_root.rstrip("/")
+    body = f"User-agent: *\nAllow: /\nSitemap: {base_url}/sitemap.xml\n"
+    return Response(body, mimetype="text/plain")
+
+
+@app.get("/sitemap.xml")
+def sitemap():
+    base_url = request.url_root.rstrip("/")
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"  <url><loc>{base_url}/</loc></url>\n"
+        "</urlset>\n"
+    )
+    return Response(body, mimetype="application/xml")
+
+
+@app.errorhandler(404)
+def not_found(_error):
+    if request.accept_mimetypes.best == "application/json":
+        return jsonify({"error": "Not found."}), 404
+    return render_template("404.html"), 404
+
+
 @app.route("/auth/status")
 def auth_status():
     client = _authenticated_client()
@@ -457,7 +489,8 @@ def signup():
 
 @app.route("/login", methods=["POST"])
 def login():
-    if _public_rate_limited("login", 12, 900):
+    # Successful account switches should not consume the failed-login budget.
+    if _public_rate_limited("login", 12, 900, record_attempt=False):
         return jsonify({"error": "Too many login attempts. Wait a few minutes and try again."}), 429
     data = request.get_json(silent=True) or {}
     email = str(data.get("email", "")).strip().lower()
@@ -483,6 +516,7 @@ def login():
     except SupabaseConfigurationError as exc:
         return jsonify({"error": str(exc)}), 503
     except Exception:
+        _public_rate_limited("login", 12, 900)
         return jsonify({"error": "Invalid email or password, or email is not confirmed."}), 401
 
 

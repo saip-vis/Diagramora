@@ -192,9 +192,16 @@ Gestures detected so far:
     merged_edges = list(previous_graph.get("edges", []))
     existing_edge_set = {(e["from"], e["to"]) for e in merged_edges}
     for edge in diff.get("new_edges", []):
-        key = (edge["from"], edge["to"])
+        source = str(edge.get("from", "")).strip()
+        target = str(edge.get("to", "")).strip()
+        # Mermaid renders undeclared edge endpoints as ID-shaped placeholder
+        # nodes (for example "node5"). Ignore malformed incremental edges until
+        # the model supplies both real nodes in a later update.
+        if source not in existing_id_set or target not in existing_id_set or source == target:
+            continue
+        key = (source, target)
         if key not in existing_edge_set:
-            merged_edges.append(edge)
+            merged_edges.append({**edge, "from": source, "to": target})
             existing_edge_set.add(key)
 
     result, _ = merge_similar_nodes({"nodes": merged_nodes, "edges": merged_edges})

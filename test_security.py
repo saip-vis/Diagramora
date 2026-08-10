@@ -3,6 +3,8 @@
 import os
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 os.environ["SESSION_FILE_DIR"] = tempfile.mkdtemp(prefix="flowchart-test-sessions-")
 
@@ -11,10 +13,13 @@ from app import (
     _bounded_text,
     _clear_and_rotate_session,
     _estimated_cost_microusd,
+    _public_attempts,
+    _public_rate_limited,
     _validated_graph,
     app,
 )
 from flask import session
+from ai_service import update_graph_live
 
 
 class ValidationTests(unittest.TestCase):
@@ -58,6 +63,23 @@ class ValidationTests(unittest.TestCase):
         })
         self.assertEqual(len(graph["nodes"]), 2)
         self.assertEqual(graph["edges"][0]["to"], "two")
+
+    def test_live_update_drops_edges_to_undeclared_nodes(self):
+        response = SimpleNamespace(
+            model="gpt-4.1-nano",
+            usage=None,
+            choices=[SimpleNamespace(message=SimpleNamespace(content=(
+                '{"new_nodes": [], "updated_nodes": [], '
+                '"new_edges": [{"from": "one", "to": "node5", "label": ""}]}'
+            )))],
+        )
+        with patch("ai_service.client.chat.completions.create", return_value=response):
+            graph = update_graph_live(
+                "Continue the process",
+                {"nodes": [{"id": "one", "label": "Existing step"}], "edges": []},
+                [],
+            )
+        self.assertEqual(graph["edges"], [])
 
 
 class ApiBoundaryTests(unittest.TestCase):
@@ -109,6 +131,27 @@ class ApiBoundaryTests(unittest.TestCase):
             _clear_and_rotate_session()
             self.assertNotEqual(session.sid, old_session_id)
             self.assertNotIn("supabase_access_token", session)
+
+    def test_successful_login_checks_do_not_consume_failure_budget(self):
+        _public_attempts.clear()
+        with app.test_request_context("/login", environ_base={"REMOTE_ADDR": "127.0.0.9"}):
+            for _ in range(20):
+                self.assertFalse(_public_rate_limited("login", 12, 900, record_attempt=False))
+            for _ in range(12):
+                self.assertFalse(_public_rate_limited("login", 12, 900))
+            self.assertTrue(_public_rate_limited("login", 12, 900, record_attempt=False))
+
+    def test_public_metadata_and_error_routes(self):
+        for path, expected_type in (
+            ("/favicon.svg", "image/svg+xml"),
+            ("/robots.txt", "text/plain"),
+            ("/sitemap.xml", "application/xml"),
+        ):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200, path)
+            self.assertIn(expected_type, response.content_type)
+            response.close()
+        self.assertEqual(self.client.get("/missing-page").status_code, 404)
 
 
 if __name__ == "__main__":
