@@ -662,6 +662,63 @@
   #versionList { display:grid; gap:8px; margin-top:12px; max-height:260px; overflow:auto; }
   .version-row { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #d7e0e8; border-radius:8px; padding:9px 10px; }
 
+  /* ---------- Desktop density ----------
+     Recreates the spacious feel of a zoomed-out browser without shrinking
+     mobile controls or overriding a visitor's accessibility preferences. */
+  @media (min-width: 901px) {
+    html { font-size: 14px; }
+    header { min-height:56px; padding:9px clamp(20px,2.5vw,38px); }
+    header .brand { gap:8px; font-size:.92rem; }
+    .brand-mark { width:28px; height:28px; border-radius:8px; font-size:.76rem; }
+    nav button { padding:7px 9px; font-size:.8rem; }
+
+    main { max-width:1740px; min-height:calc(100vh - 56px); padding:28px 34px 56px; }
+    .landing-hero {
+      min-height:63vh;
+      grid-template-columns:minmax(0,1.08fr) minmax(350px,.82fr);
+      gap:clamp(34px,4vw,62px);
+      padding:42px 0 50px;
+    }
+    .landing-copy h1 {
+      max-width:720px;
+      font-size:clamp(2.4rem,3.8vw,4rem);
+      line-height:1.04;
+      letter-spacing:-.048em;
+    }
+    .landing-copy p { max-width:650px; margin-top:20px; font-size:1.08rem; line-height:1.6; }
+    .landing-eyebrow { margin-bottom:17px; font-size:.78rem; }
+    .landing-actions { margin-top:22px; gap:9px; }
+    .landing-actions .action-btn { min-width:158px; min-height:44px; font-size:.92rem; }
+    .landing-note { margin-top:10px; font-size:.74rem; }
+
+    .flow-demo { min-height:470px; padding:31px; border-radius:var(--radius-lg); box-shadow:var(--shadow-md); }
+    .flow-demo::before { margin-bottom:18px; font-size:.62rem; }
+    .demo-node { width:min(240px,78%); padding:11px 16px; border-width:1.5px; border-radius:var(--radius-sm); font-size:.88rem; }
+    .demo-node.start, .demo-node.end { width:106px; }
+    .demo-node.decision { width:145px; border-radius:var(--radius-md); }
+    .demo-arrow { height:27px; }
+    .demo-branch-connector, .demo-merge-connector { height:29px; }
+    .demo-branch-connector::before, .demo-merge-connector::before { top:13px; }
+    .demo-branch-connector::after { height:15px; }
+    .demo-merge-connector::after { top:13px; height:16px; }
+    .demo-branch-connector .demo-connector-arm { top:13px; height:16px; }
+    .demo-merge-connector .demo-connector-arm { height:14px; }
+    .demo-branches { gap:15px; }
+    .demo-branches .demo-node { font-size:.76rem; }
+    .demo-caption { right:15px; bottom:13px; font-size:.64rem; }
+
+    .workspace-eyebrow { margin-top:26px; font-size:.68rem; }
+    .workspace-intro h1 { max-width:900px; margin-top:30px; font-size:clamp(2.4rem,3.8vw,4rem); }
+    .workspace-intro p { max-width:720px; margin-top:18px; font-size:1.06rem; }
+    #page-home > #recordBtn { min-width:160px; min-height:48px; margin-top:22px; padding:11px 25px; font-size:.96rem; }
+    .workspace-examples { margin-top:18px; }
+    .workspace-usage { margin-top:14px; }
+    .workspace-onboarding { max-width:820px; margin-top:28px; gap:11px; }
+    .onboarding-step { gap:10px; padding:14px; }
+    .onboarding-number { width:27px; height:27px; }
+    #graphContainer { min-height:440px; }
+  }
+
 </style>
 </head>
 <body>
