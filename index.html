@@ -717,6 +717,27 @@
     .onboarding-step { gap:10px; padding:14px; }
     .onboarding-number { width:27px; height:27px; }
     #graphContainer { min-height:440px; }
+
+    /* Keep the landing page at its established density, while making the
+       signed-in workspace closer to the user's preferred 60% browser view. */
+    #page-home { font-size:12px; }
+    #page-home .workspace-eyebrow { margin-top:20px; font-size:.62rem; }
+    #page-home .workspace-intro h1 { max-width:800px; margin-top:22px; font-size:clamp(2.1rem,3.25vw,3.45rem); }
+    #page-home .workspace-intro p { max-width:650px; margin-top:14px; font-size:.94rem; line-height:1.5; }
+    #page-home .workspace-examples { margin-top:14px; }
+    #page-home .example-chip { padding:7px 11px; font-size:.74rem; }
+    #page-home .workspace-usage { margin-top:10px; padding:6px 11px; font-size:.72rem; }
+    #page-home > #recordBtn { min-width:146px; min-height:42px; margin-top:16px; padding:9px 22px; font-size:.88rem; }
+    #page-home > #status { margin-top:12px; font-size:.88rem; }
+    #page-home #spinner { width:28px; height:28px; margin-top:12px; }
+    #page-home #cameraStatus { margin-top:8px; padding:5px 9px; font-size:.7rem; }
+    #page-home .workspace-onboarding { max-width:740px; margin-top:20px; gap:9px; }
+    #page-home .onboarding-step { gap:9px; padding:11px; }
+    #page-home .onboarding-number { width:24px; height:24px; }
+    #page-home #workArea { gap:18px; margin-top:16px; }
+    #page-home #liveGraphLabel { margin-bottom:7px; font-size:.7rem; }
+    #page-home #liveTitle { margin-bottom:10px; font-size:1rem; }
+    #page-home #graphContainer { min-height:380px; padding:22px; }
   }
 
 </style>
