@@ -1,4 +1,4 @@
-"""Voice-to-Flowchart Flask application entry point."""
+"""Diagramora Flask application entry point."""
 
 import json
 import logging
@@ -282,9 +282,20 @@ def _reserve_entitlement(client, operation: str):
         return None, (jsonify({"error": "Trial usage is not configured. Run the latest Supabase schema."}), 503)
 
 
-def _refund_entitlement(client, operation: str):
+def _settle_entitlement(client, reservation_id: str | None):
+    if not reservation_id:
+        return
     try:
-        client.rpc("refund_ai_entitlement", {"p_operation": operation}).execute()
+        client.rpc("settle_ai_entitlement", {"p_reservation_id": reservation_id}).execute()
+    except Exception:
+        logging.exception("Could not settle AI entitlement reservation")
+
+
+def _refund_entitlement(client, reservation_id: str | None):
+    if not reservation_id:
+        return
+    try:
+        client.rpc("refund_ai_entitlement", {"p_reservation_id": reservation_id}).execute()
     except Exception:
         logging.exception("Could not refund failed AI entitlement")
 
@@ -318,14 +329,17 @@ def charge_entitlement(operation: str):
             entitlement, entitlement_error = _reserve_entitlement(client, operation)
             if entitlement_error:
                 return entitlement_error
+            reservation_id = entitlement.get("reservation_id")
             try:
                 response = view(*args, **kwargs)
                 status_code = response[1] if isinstance(response, tuple) else getattr(response, "status_code", 200)
                 if int(status_code) >= 400:
-                    _refund_entitlement(client, operation)
+                    _refund_entitlement(client, reservation_id)
+                else:
+                    _settle_entitlement(client, reservation_id)
                 return response
             except Exception:
-                _refund_entitlement(client, operation)
+                _refund_entitlement(client, reservation_id)
                 raise
         return wrapped
     return decorator
@@ -815,6 +829,12 @@ def design_versions(design_id):
     except Exception as exc:
         if "design_not_found" in str(exc):
             return jsonify({"error": "Design not found."}), 404
+        if "version_limit_reached" in str(exc):
+            return jsonify({
+                "error": "Free accounts can keep up to 20 versions per design.",
+                "code": "version_limit_reached",
+                "limit": 20,
+            }), 403
         return _server_error("Could not access versions.")
 
 
@@ -937,15 +957,17 @@ def finalize_endpoint():
         entitlement, entitlement_error = _reserve_entitlement(client, "generation")
         if entitlement_error:
             return entitlement_error
+        reservation_id = entitlement.get("reservation_id")
         try:
             cleaned = build_layout_plan(Flowchart.from_dict(finalize_graph(flowchart_data, transcript, gestures)))
+            _settle_entitlement(client, reservation_id)
             return jsonify({
                 "graph": cleaned.to_dict(),
                 "title": generate_title(cleaned.to_dict()),
                 "generations_remaining": entitlement.get("remaining"),
             })
         except Exception:
-            _refund_entitlement(client, "generation")
+            _refund_entitlement(client, reservation_id)
             raise
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
@@ -972,15 +994,17 @@ def ai_edit():
         entitlement, entitlement_error = _reserve_entitlement(client, "edit")
         if entitlement_error:
             return entitlement_error
+        reservation_id = entitlement.get("reservation_id")
         try:
             edited = edit_flowchart_with_prompt(graph, instruction)
+            _settle_entitlement(client, reservation_id)
             return jsonify({
                 "graph": edited,
                 "elapsed_ms": round((time.perf_counter() - started_at) * 1000),
                 "edits_remaining": entitlement.get("remaining"),
             })
         except Exception:
-            _refund_entitlement(client, "edit")
+            _refund_entitlement(client, reservation_id)
             raise
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400

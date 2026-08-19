@@ -34,10 +34,39 @@ create index if not exists designs_user_id_idx on public.designs(user_id);
 alter table public.profiles enable row level security;
 alter table public.designs enable row level security;
 alter table public.billing_customers enable row level security;
-grant select, insert, update, delete on public.profiles to authenticated;
-grant select, update, delete on public.designs to authenticated;
-revoke insert on public.designs from authenticated;
+-- Authenticated users may edit only public profile fields. In particular, the
+-- plan column is server-managed and must never be writable through the Data API.
+revoke insert, update, delete on public.profiles from authenticated;
+grant select on public.profiles to authenticated;
+grant update (username, display_name, updated_at) on public.profiles to authenticated;
+
+-- Design writes still respect RLS, while column grants and database constraints
+-- keep direct Data API calls inside the same bounds as the Flask API.
+revoke insert, update on public.designs from authenticated;
+grant select, delete on public.designs to authenticated;
+grant update (title, workflow_json, updated_at) on public.designs to authenticated;
 grant select on public.billing_customers to authenticated;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'designs_title_length'
+      and conrelid = 'public.designs'::regclass
+  ) then
+    alter table public.designs add constraint designs_title_length
+      check (char_length(title) between 1 and 200) not valid;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'designs_workflow_size'
+      and conrelid = 'public.designs'::regclass
+  ) then
+    alter table public.designs add constraint designs_workflow_size
+      check (octet_length(workflow_json::text) <= 300000) not valid;
+  end if;
+end;
+$$;
 
 drop policy if exists "Users can view their own profile" on public.profiles;
 drop policy if exists "Users can insert their own profile" on public.profiles;
@@ -94,6 +123,19 @@ create index if not exists design_versions_design_id_idx on public.design_versio
 alter table public.design_versions enable row level security;
 grant select, delete on public.design_versions to authenticated;
 revoke insert on public.design_versions from authenticated;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'design_versions_workflow_size'
+      and conrelid = 'public.design_versions'::regclass
+  ) then
+    alter table public.design_versions add constraint design_versions_workflow_size
+      check (octet_length(workflow_json::text) <= 300000) not valid;
+  end if;
+end;
+$$;
 
 drop policy if exists "Users can view their own design versions" on public.design_versions;
 drop policy if exists "Users can create their own design versions" on public.design_versions;
@@ -201,6 +243,24 @@ create table if not exists public.ai_entitlements (
 alter table public.ai_entitlements enable row level security;
 revoke all on public.ai_entitlements from anon, authenticated;
 
+-- Each charged request receives an opaque reservation ID. Flask keeps that ID
+-- server-side and uses it exactly once to settle or refund the charge. A user
+-- can no longer reset an unrelated usage counter by naming only an operation.
+create table if not exists public.ai_entitlement_reservations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  operation text not null check (operation in ('generation', 'edit')),
+  status text not null default 'pending' check (status in ('pending', 'committed', 'refunded')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists ai_entitlement_reservations_user_created_idx
+on public.ai_entitlement_reservations(user_id, created_at desc);
+
+alter table public.ai_entitlement_reservations enable row level security;
+revoke all on public.ai_entitlement_reservations from anon, authenticated;
+
 create or replace function public.get_ai_entitlements()
 returns jsonb
 language plpgsql
@@ -238,6 +298,7 @@ declare
   caller_id uuid := auth.uid();
   entitlement public.ai_entitlements;
   caller_plan text;
+  reservation_id uuid;
 begin
   if caller_id is null then raise exception 'Authentication required'; end if;
   if p_operation not in ('generation', 'edit') then raise exception 'Invalid entitlement operation'; end if;
@@ -254,34 +315,77 @@ begin
       return jsonb_build_object('allowed', false, 'code', 'generation_trial_exhausted', 'remaining', 0);
     end if;
     update public.ai_entitlements set generations_used = generations_used + 1, updated_at = now() where user_id = caller_id;
-    return jsonb_build_object('allowed', true, 'remaining', entitlement.generation_limit - entitlement.generations_used - 1);
+    insert into public.ai_entitlement_reservations(user_id, operation)
+    values (caller_id, p_operation) returning id into reservation_id;
+    return jsonb_build_object(
+      'allowed', true,
+      'remaining', entitlement.generation_limit - entitlement.generations_used - 1,
+      'reservation_id', reservation_id
+    );
   end if;
   if entitlement.edits_used >= entitlement.edit_limit then
     return jsonb_build_object('allowed', false, 'code', 'edit_trial_exhausted', 'remaining', 0);
   end if;
   update public.ai_entitlements set edits_used = edits_used + 1, updated_at = now() where user_id = caller_id;
-  return jsonb_build_object('allowed', true, 'remaining', entitlement.edit_limit - entitlement.edits_used - 1);
+  insert into public.ai_entitlement_reservations(user_id, operation)
+  values (caller_id, p_operation) returning id into reservation_id;
+  return jsonb_build_object(
+    'allowed', true,
+    'remaining', entitlement.edit_limit - entitlement.edits_used - 1,
+    'reservation_id', reservation_id
+  );
 end;
 $$;
 
-create or replace function public.refund_ai_entitlement(p_operation text)
-returns void
+drop function if exists public.refund_ai_entitlement(text);
+
+create or replace function public.settle_ai_entitlement(p_reservation_id uuid)
+returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare caller_id uuid := auth.uid(); caller_plan text;
+declare caller_id uuid := auth.uid();
 begin
   if caller_id is null then raise exception 'Authentication required'; end if;
-  if p_operation not in ('generation', 'edit') then raise exception 'Invalid entitlement operation'; end if;
-  select coalesce(plan, 'free') into caller_plan from public.profiles where id = caller_id;
-  if caller_plan <> 'free' then return; end if;
+  update public.ai_entitlement_reservations
+  set status = 'committed', updated_at = now()
+  where id = p_reservation_id and user_id = caller_id and status = 'pending';
+  return found;
+end;
+$$;
+
+create or replace function public.refund_ai_entitlement(p_reservation_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  caller_id uuid := auth.uid();
+  reservation public.ai_entitlement_reservations;
+begin
+  if caller_id is null then raise exception 'Authentication required'; end if;
+  select * into reservation
+  from public.ai_entitlement_reservations
+  where id = p_reservation_id and user_id = caller_id
+  for update;
+  if reservation.id is null or reservation.status <> 'pending' then return false; end if;
+
   perform pg_advisory_xact_lock(hashtextextended(caller_id::text || ':entitlements', 0));
-  if p_operation = 'generation' then
-    update public.ai_entitlements set generations_used = greatest(generations_used - 1, 0), updated_at = now() where user_id = caller_id;
+  if reservation.operation = 'generation' then
+    update public.ai_entitlements
+    set generations_used = greatest(generations_used - 1, 0), updated_at = now()
+    where user_id = caller_id;
   else
-    update public.ai_entitlements set edits_used = greatest(edits_used - 1, 0), updated_at = now() where user_id = caller_id;
+    update public.ai_entitlements
+    set edits_used = greatest(edits_used - 1, 0), updated_at = now()
+    where user_id = caller_id;
   end if;
+  update public.ai_entitlement_reservations
+  set status = 'refunded', updated_at = now()
+  where id = reservation.id;
+  return true;
 end;
 $$;
 
@@ -301,6 +405,18 @@ begin
   if p_operation not in ('generate', 'live_update', 'live_title', 'finalize', 'ai_edit', 'export') then
     raise exception 'Invalid usage operation';
   end if;
+  if p_input_tokens < 0 or p_input_tokens > 2000000
+     or p_cached_input_tokens < 0 or p_cached_input_tokens > p_input_tokens
+     or p_output_tokens < 0 or p_output_tokens > 2000000
+     or p_estimated_cost_microusd < 0 or p_estimated_cost_microusd > 1000000000 then
+    raise exception 'Invalid usage values';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(caller_id::text || ':provider-usage', 0));
+  if (select count(*) from public.ai_usage_events
+      where user_id = caller_id and event_kind = 'provider_usage'
+        and created_at >= now() - interval '1 day') >= 500 then
+    return;
+  end if;
   insert into public.ai_usage_events(
     user_id, operation, event_kind, model, input_tokens, cached_input_tokens,
     output_tokens, estimated_cost_microusd, provider_request_id
@@ -315,11 +431,13 @@ $$;
 
 revoke all on function public.get_ai_entitlements() from public;
 revoke all on function public.reserve_ai_entitlement(text) from public;
-revoke all on function public.refund_ai_entitlement(text) from public;
+revoke all on function public.settle_ai_entitlement(uuid) from public;
+revoke all on function public.refund_ai_entitlement(uuid) from public;
 revoke all on function public.record_ai_provider_usage(text,text,integer,integer,integer,bigint,text) from public;
 grant execute on function public.get_ai_entitlements() to authenticated;
 grant execute on function public.reserve_ai_entitlement(text) to authenticated;
-grant execute on function public.refund_ai_entitlement(text) to authenticated;
+grant execute on function public.settle_ai_entitlement(uuid) to authenticated;
+grant execute on function public.refund_ai_entitlement(uuid) to authenticated;
 grant execute on function public.record_ai_provider_usage(text,text,integer,integer,integer,bigint,text) to authenticated;
 
 -- Private-beta feedback. Users submit through a constrained function and
@@ -429,11 +547,18 @@ declare
   source_workflow jsonb;
   next_number integer;
   created_version public.design_versions;
+  caller_plan text;
 begin
   if caller_id is null then raise exception 'Authentication required'; end if;
   perform pg_advisory_xact_lock(hashtextextended(caller_id::text || ':' || p_design_id::text || ':versions', 0));
   select workflow_json into source_workflow from public.designs where id = p_design_id and user_id = caller_id;
   if source_workflow is null then raise exception using errcode = 'P0002', message = 'design_not_found'; end if;
+  select coalesce(plan, 'free') into caller_plan from public.profiles where id = caller_id;
+  if coalesce(caller_plan, 'free') = 'free' and (
+    select count(*) from public.design_versions where design_id = p_design_id and user_id = caller_id
+  ) >= 20 then
+    raise exception using errcode = 'P0001', message = 'version_limit_reached';
+  end if;
   select coalesce(max(version_number), 0) + 1 into next_number
   from public.design_versions where design_id = p_design_id and user_id = caller_id;
   insert into public.design_versions(design_id, user_id, version_number, workflow_json)

@@ -25,10 +25,11 @@ Row Level Security remains active.
 In the Supabase dashboard, open **SQL Editor**, paste the contents of
 `supabase_schema.sql`, and run it once.
 
-The schema includes profiles, saved designs, version history, RLS policies,
-atomic three-design/version functions, database-backed AI usage quotas, free-trial
-entitlements (three generations and ten AI edits), provider token telemetry, and
-private-beta feedback submissions.
+The schema includes profiles, saved designs, capped free version history, RLS
+and column-level privileges, database workflow-size constraints, atomic
+three-design/version functions, database-backed AI usage quotas, one-time
+entitlement reservations (three generations and ten AI edits), bounded provider
+token telemetry, and private-beta feedback submissions.
 
 ## 3. Authentication redirect URLs
 

@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Voice to Flowchart | Turn speech into editable diagrams</title>
+<title>Diagramora | Turn speech into editable diagrams</title>
 <meta name="description" content="Explain a process naturally and turn it into a structured, editable flowchart.">
 <meta name="theme-color" content="#0B2545">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Voice to Flowchart">
+<meta property="og:title" content="Diagramora">
 <meta property="og:description" content="Turn a spoken process into a structured, editable flowchart.">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Voice to Flowchart">
+<meta name="twitter:title" content="Diagramora">
 <meta name="twitter:description" content="Turn a spoken process into a structured, editable flowchart.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js"></script>
@@ -636,15 +636,44 @@
   #autosaveIndicator { font-size:.8rem; color:#52687D; min-width:90px; text-align:right; }
   #accountNav { display:none; }
   #accountNav.visible { display:inline-block; }
-  .account-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:18px; }
-  .account-card { background:#fff; border:1px solid #c9d5e1; border-radius:12px; padding:18px; }
-  .account-card h3 { margin:0 0 10px; color:var(--dark-blue); }
+  #page-account { max-width:1400px; margin:0 auto; }
+  .account-grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:18px; align-items:stretch; margin-top:24px; }
+  .account-card { position:relative; background:#fff; border:1px solid #c9d5e1; border-radius:12px; padding:22px; box-shadow:0 4px 14px rgba(11,37,69,.035); }
+  .account-card h3 { margin:0 0 14px; color:var(--dark-blue); }
+  .profile-card { grid-column:span 4; }
+  .plan-card { grid-column:span 3; border-top:4px solid #7896b3; background:#f9fbfd; }
+  .account-card-kicker { margin-bottom:8px; color:#647b90; font-size:.7rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
   .usage-meter { margin-top:16px; }
   .usage-meter-copy { display:flex; justify-content:space-between; gap:14px; margin-bottom:7px; color:#334e68; font-size:.88rem; }
   .usage-meter-copy strong { color:var(--dark-blue); }
   .usage-meter-track { height:8px; overflow:hidden; border-radius:999px; background:#e4edf5; }
   .usage-meter-fill { height:100%; width:0; border-radius:inherit; background:#285f8f; transition:width .25s ease; }
   .usage-note { margin:16px 0 0; color:#526b82; font-size:.83rem; line-height:1.5; }
+  .upgrade-card { grid-column:span 5; display:flex; flex-direction:column; padding:22px; border-top:4px solid var(--dark-blue); border-color:#aebfd0; background:#f4f8fb; }
+  .upgrade-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+  .upgrade-card-copy h3 { margin-bottom:6px; }
+  .upgrade-card-copy p { margin:0; color:#526b82; font-size:.9rem; line-height:1.5; text-align:left; }
+  .upgrade-badge { flex:none; padding:6px 10px; border:1px solid #afc0d1; border-radius:999px; background:#fff; color:#285f8f; font-size:.72rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+  .upgrade-feature-grid { display:grid; grid-template-columns:1fr; gap:10px; margin:18px 0; padding:0; list-style:none; }
+  .upgrade-feature { display:grid; grid-template-columns:22px 1fr; gap:9px; align-items:start; color:#334e68; font-size:.88rem; line-height:1.45; }
+  .upgrade-feature::before { content:"✓"; display:grid; place-items:center; width:20px; height:20px; border-radius:50%; background:#e4eef6; color:#285f8f; font-size:.72rem; font-weight:900; }
+  .upgrade-feature strong { display:block; margin-bottom:1px; color:var(--dark-blue); }
+  .upgrade-card-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:auto; padding-top:16px; border-top:1px solid #d7e1ea; }
+  .upgrade-card-footer small { max-width:560px; color:#647a8f; line-height:1.45; }
+  .upgrade-coming-soon { flex:none; min-width:145px; }
+  @media (max-width:1100px) {
+    .profile-card, .plan-card { grid-column:span 6; }
+    .upgrade-card { grid-column:1/-1; }
+    .upgrade-feature-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+  @media (max-width:700px) {
+    .account-grid { grid-template-columns:1fr; }
+    .profile-card, .plan-card, .upgrade-card { grid-column:1; }
+    .upgrade-card-header, .upgrade-card-footer { align-items:stretch; flex-direction:column; }
+    .upgrade-feature-grid { grid-template-columns:1fr; }
+    .upgrade-badge { width:max-content; }
+    .upgrade-coming-soon { width:100%; }
+  }
   #trialLimitModal .modal-card { width:min(500px,100%); padding:30px; border-top:4px solid #285f8f; }
   #onboardingModal .modal-card { width:min(650px,100%); padding:32px; }
   .onboarding-dialog-steps { display:grid; gap:10px; margin:20px 0; }
@@ -745,7 +774,7 @@
 <body>
 
 <header>
-  <div class="brand"><span class="brand-mark">V→</span><span>Voice to Flowchart</span></div>
+  <div class="brand"><span class="brand-mark">D→</span><span>Diagramora</span></div>
   <nav>
     <button class="nav-btn active" data-page="landing">Home</button>
     <button class="nav-btn hidden" id="workspaceNav" data-page="home">Workspace</button>
@@ -764,7 +793,7 @@
       <div class="landing-copy">
         <div class="landing-eyebrow">Explain it. See it.</div>
         <h1>Turn your spoken ideas into clear flowcharts.</h1>
-        <p>Describe a process naturally. Voice to Flowchart turns your explanation into a structured, editable diagram while you speak.</p>
+        <p>Describe a process naturally. Diagramora turns your explanation into a structured, editable diagram while you speak.</p>
         <div class="landing-actions">
           <button class="action-btn" id="landingSignupBtn" type="button">Create account</button>
           <button class="action-btn secondary" id="landingLoginBtn" type="button">Log in</button>
@@ -790,7 +819,7 @@
     <div class="landing-feedback-wrap">
       <button class="landing-feedback-card" id="feedbackCard" type="button">
         <span class="landing-feedback-icon" aria-hidden="true">?</span>
-        <span><strong>Help improve Voice to Flowchart</strong><small>Share what worked or what felt confusing.</small></span>
+        <span><strong>Help improve Diagramora</strong><small>Share what worked or what felt confusing.</small></span>
         <span class="landing-feedback-arrow">→</span>
       </button>
     </div>
@@ -895,7 +924,7 @@
     <h1>Account</h1>
     <p>Manage your profile and view your current plan.</p>
     <div class="account-grid">
-      <div class="account-card">
+      <div class="account-card profile-card">
         <h3>Profile</h3>
         <label class="field">Email<input id="accountEmail" type="email" disabled></label>
         <label class="field">Username<input id="accountUsername" maxlength="60"></label>
@@ -903,8 +932,8 @@
         <button class="action-btn" id="saveProfileBtn" type="button">Save profile</button>
         <div id="profileStatus"></div>
       </div>
-      <div class="account-card">
-        <h3>Plan</h3>
+      <div class="account-card plan-card">
+        <div class="account-card-kicker">Current plan</div>
         <div class="account-stat" id="accountPlan">Free</div>
         <div class="usage-meter">
           <div class="usage-meter-copy"><span>Flowchart generations</span><strong id="generationUsage">—</strong></div>
@@ -916,15 +945,36 @@
         </div>
         <p class="usage-note">Manual editing, saving, reopening, and exporting your existing designs do not use trial credits.</p>
       </div>
+      <div class="account-card upgrade-card" aria-labelledby="upgradeHeading">
+        <div class="upgrade-card-header">
+          <div class="upgrade-card-copy">
+            <h3 id="upgradeHeading">Upgrade to Diagramora Pro</h3>
+            <p>More room to create, refine, personalize, and export professional diagrams.</p>
+          </div>
+          <span class="upgrade-badge">Planned</span>
+        </div>
+        <ul class="upgrade-feature-grid">
+          <li class="upgrade-feature"><span><strong>Unlimited saved designs</strong>Keep every workflow without managing a storage cap.</span></li>
+          <li class="upgrade-feature"><span><strong>Larger monthly AI allowance</strong>Generate and refine more diagrams each month.</span></li>
+          <li class="upgrade-feature"><span><strong>Premium exports</strong>Export presentation-ready diagrams in additional high-quality formats.</span></li>
+          <li class="upgrade-feature"><span><strong>Unlimited version history</strong>Review and restore earlier versions of your work.</span></li>
+          <li class="upgrade-feature"><span><strong>Custom themes</strong>Personalize diagram colors and visual styles.</span></li>
+          <li class="upgrade-feature"><span><strong>Meeting integration</strong>Enable Diagramora in meetings to generate flowcharts on demand when you need it</span></li>
+        </ul>
+        <div class="upgrade-card-footer">
+          <small>Pro is not available yet. No payment or billing information will be collected.</small>
+          <button class="action-btn upgrade-coming-soon" type="button" disabled>Coming soon</button>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- ---------- ABOUT US ---------- -->
   <section class="page" id="page-about">
-    <h1>About Voice to Flowchart</h1>
+    <h1>About Diagramora</h1>
     <div class="about-card">
       <p class="about-lead">Diagramming should begin with understanding, not drawing tools.</p>
-      <p>Voice to Flowchart is an early-stage project exploring a simpler way to turn spoken explanations into structured, editable workflows. The goal is to let people focus on the process they understand while the software handles nodes, branches, and layout.</p>
+      <p>Diagramora is an early-stage project exploring a simpler way to turn spoken explanations into structured, editable workflows. The goal is to let people focus on the process they understand while the software handles nodes, branches, and layout.</p>
       <p>Flowcharts are the starting point. Over time, the same approach can support other structured visuals such as decision trees, system diagrams, UML, and organization charts.</p>
       <div class="about-values">
         <div class="about-value"><strong>Natural first</strong><span>Explain ideas in your own words instead of learning a drawing interface.</span></div>
@@ -989,7 +1039,7 @@
 
     <div class="faq-item">
       <div class="q">Is my audio or video saved anywhere?</div>
-      <div class="a">Camera frames are processed in your browser for hand-landmark detection and are not intentionally stored by Voice to Flowchart. Speech recognition may be handled by your browser provider; the resulting transcript is sent to the application to build the diagram. See Privacy for more detail.</div>
+      <div class="a">Camera frames are processed in your browser for hand-landmark detection and are not intentionally stored by Diagramora. Speech recognition may be handled by your browser provider; the resulting transcript is sent to the application to build the diagram. See Privacy for more detail.</div>
     </div>
 
     <div class="faq-item">
@@ -1019,10 +1069,10 @@
     <div class="policy-date">Temporary private-testing policy · Effective August 1, 2026</div>
     <div class="policy-card">
       <h2>What this app collects</h2>
-      <p>Flowchart App processes the account information you provide, your transcribed process descriptions, detected gesture names and timestamps, generated flowchart data, designs you choose to save, and feedback you choose to submit.</p>
+      <p>Diagramora processes the account information you provide, your transcribed process descriptions, detected gesture names and timestamps, generated flowchart data, designs you choose to save, and feedback you choose to submit.</p>
 
       <h2>Microphone and camera use</h2>
-      <p>The current browser experience uses your microphone for speech recognition and your camera for live hand-landmark detection. Camera frames are processed in the browser and are not intentionally stored by Flowchart App. Speech recognition may be processed by your browser or browser provider. The resulting transcript, not your live camera feed, is sent to the application to generate a flowchart.</p>
+      <p>The current browser experience uses your microphone for speech recognition and your camera for live hand-landmark detection. Camera frames are processed in the browser and are not intentionally stored by Diagramora. Speech recognition may be processed by your browser or browser provider. The resulting transcript, not your live camera feed, is sent to the application to generate a flowchart.</p>
 
       <h2>AI and service providers</h2>
       <p>Transcript text, gesture events, and relevant flowchart data may be sent to OpenAI to generate, repair, title, or edit diagrams. Supabase is used for account authentication and for storing profiles, saved designs, transcripts, version snapshots, trial usage, and technical AI usage metadata such as model names and token counts.</p>
@@ -1047,7 +1097,7 @@
 
 <footer>
   <div>
-    <div class="footer-brand">Voice to Flowchart</div>
+    <div class="footer-brand">Diagramora</div>
     <div class="footer-copy">An early private test for turning natural explanations into structured, editable diagrams.</div>
   </div>
   <div class="footer-links" aria-label="Footer navigation">
@@ -1102,7 +1152,7 @@
 
 <div class="modal-backdrop" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginHeading">
   <div class="modal-card">
-    <div class="auth-kicker">Voice to Flowchart</div>
+    <div class="auth-kicker">Diagramora</div>
     <h2 id="loginHeading">Log in</h2>
     <p class="auth-subtitle" id="authSubtitle">Welcome back. Continue building diagrams from the way you naturally explain ideas.</p>
     <div class="auth-benefits" aria-label="Account benefits">
@@ -1120,7 +1170,7 @@
       <button class="action-btn secondary" id="toggleAuthModeBtn" type="button">Create account instead</button>
       <button class="action-btn" id="submitLoginBtn" type="button">Log in</button>
     </div>
-    <p class="auth-terms">By continuing, you agree to use Flowchart App responsibly and acknowledge our <button type="button" id="authPrivacyLink" class="forgot-link">Privacy Policy</button>.</p>
+    <p class="auth-terms">By continuing, you agree to use Diagramora responsibly and acknowledge our <button type="button" id="authPrivacyLink" class="forgot-link">Privacy Policy</button>.</p>
   </div>
 </div>
 
@@ -1233,13 +1283,13 @@
       const page = document.getElementById("page-" + pageName);
       if (page) page.classList.add("active");
       const pageMeta = {
-        landing: ["Voice to Flowchart | Turn speech into editable diagrams", "Explain a process naturally and turn it into a structured, editable flowchart."],
-        home: ["Workspace | Voice to Flowchart", "Create and refine an editable flowchart from your spoken process."],
-        designs: ["My Designs | Voice to Flowchart", "Open, organize, and continue editing your saved flowcharts."],
-        account: ["Account | Voice to Flowchart", "Manage your Voice to Flowchart profile and usage."],
-        about: ["About | Voice to Flowchart", "Learn why Voice to Flowchart starts with explaining a process instead of drawing it."],
-        faq: ["Help and FAQ | Voice to Flowchart", "Answers about recording, privacy, editing, exports, gestures, and free usage."],
-        privacy: ["Privacy Policy | Voice to Flowchart", "How Voice to Flowchart handles account, transcript, gesture, and diagram data."]
+        landing: ["Diagramora | Turn speech into editable diagrams", "Explain a process naturally and turn it into a structured, editable flowchart."],
+        home: ["Workspace | Diagramora", "Create and refine an editable flowchart from your spoken process."],
+        designs: ["My Designs | Diagramora", "Open, organize, and continue editing your saved flowcharts."],
+        account: ["Account | Diagramora", "Manage your Diagramora profile and usage."],
+        about: ["About | Diagramora", "Learn why Diagramora starts with explaining a process instead of drawing it."],
+        faq: ["Help and FAQ | Diagramora", "Answers about recording, privacy, editing, exports, gestures, and free usage."],
+        privacy: ["Privacy Policy | Diagramora", "How Diagramora handles account, transcript, gesture, and diagram data."]
       };
       const [title, description] = pageMeta[pageName] || pageMeta.landing;
       document.title = title;
@@ -1866,17 +1916,30 @@
       else scheduleEditorRender();
       scheduleAutosave();
     }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[character]);
+    }
+    function safeEditorColor(value, fallback) {
+      const color = String(value || "");
+      return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+    }
+    function safeEditorNumber(value, fallback, minimum, maximum) {
+      const number = Number(value);
+      return Number.isFinite(number) ? Math.min(Math.max(number, minimum), maximum) : fallback;
+    }
     function field(label, inputHtml) { return `<label class="field">${label}${inputHtml}</label>`; }
     function renderNodeProperties(node) {
       const style = ensureMetadata(node);
       propertyContent.className = "";
       propertyContent.innerHTML =
-        field("Text", `<textarea id="nodeText" rows="3">${String(node.label || "").replace(/</g,"&lt;")}</textarea>`) +
+        field("Text", `<textarea id="nodeText" rows="3">${escapeHtml(node.label)}</textarea>`) +
         field("Shape", `<select id="nodeShape"><option value="process">Rectangle</option><option value="rounded">Rounded rectangle</option><option value="circle">Circle</option><option value="input_output">Parallelogram</option><option value="decision">Diamond</option><option value="start">Oval / Start</option><option value="end">Oval / End</option></select>`) +
-        `<div class="field-row">${field("Fill", `<input id="nodeFill" type="color" value="${style.fill || '#ffffff'}">`)}${field("Border", `<input id="nodeStroke" type="color" value="${style.stroke || '#0b2545'}">`)}</div>` +
-        `<div class="field-row">${field("Text color", `<input id="nodeTextColor" type="color" value="${style.textColor || '#13293d'}">`)}${field("Font size", `<input id="nodeFontSize" type="number" min="8" max="36" value="${style.fontSize || 14}">`)}</div>` +
+        `<div class="field-row">${field("Fill", `<input id="nodeFill" type="color" value="${safeEditorColor(style.fill, '#ffffff')}">`)}${field("Border", `<input id="nodeStroke" type="color" value="${safeEditorColor(style.stroke, '#0b2545')}">`)}</div>` +
+        `<div class="field-row">${field("Text color", `<input id="nodeTextColor" type="color" value="${safeEditorColor(style.textColor, '#13293d')}">`)}${field("Font size", `<input id="nodeFontSize" type="number" min="8" max="36" value="${safeEditorNumber(style.fontSize, 14, 8, 36)}">`)}</div>` +
         field("Font", `<select id="nodeFont"><option value="Arial">Arial</option><option value="Helvetica">Helvetica</option><option value="Georgia">Georgia</option><option value="Courier New">Courier New</option></select>`) +
-        `<div class="field-row">${field("Border width", `<input id="nodeBorderWidth" type="number" min="1" max="8" value="${style.strokeWidth || 1.5}" step="0.5">`)}${field("Size", `<input id="nodeScale" type="range" min="0.75" max="1.5" value="${style.scale || 1}" step="0.05">`)}</div>` +
+        `<div class="field-row">${field("Border width", `<input id="nodeBorderWidth" type="number" min="1" max="8" value="${safeEditorNumber(style.strokeWidth, 1.5, 1, 8)}" step="0.5">`)}${field("Size", `<input id="nodeScale" type="range" min="0.75" max="1.5" value="${safeEditorNumber(style.scale, 1, .75, 1.5)}" step="0.05">`)}</div>` +
         `<button type="button" id="deleteNodeBtn">Delete node</button>`;
       document.getElementById("nodeShape").value = style.customShape || node.type || "process";
       document.getElementById("nodeFont").value = style.fontFamily || "Arial";
@@ -1913,8 +1976,8 @@
       propertyContent.className = "";
       propertyContent.innerHTML =
         `<div class="property-section-title">Connection style</div>` +
-        field("Label", `<input id="edgeLabel" value="${String(edge.label || "").replace(/"/g,"&quot;")}">`) +
-        `<div class="field-row">${field("Color", `<input id="edgeColor" type="color" value="${style.stroke || '#0b2545'}">`)}${field("Thickness", `<input id="edgeWidth" type="number" min="1" max="8" value="${style.strokeWidth || 2}" step="0.5">`)}</div>` +
+        field("Label", `<input id="edgeLabel" value="${escapeHtml(edge.label)}">`) +
+        `<div class="field-row">${field("Color", `<input id="edgeColor" type="color" value="${safeEditorColor(style.stroke, '#0b2545')}">`)}${field("Thickness", `<input id="edgeWidth" type="number" min="1" max="8" value="${safeEditorNumber(style.strokeWidth, 2, 1, 8)}" step="0.5">`)}</div>` +
         field("Line pattern", `<select id="edgePattern"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select>`) +
         field("Line shape", `<select id="edgeCurve"><option value="default">Automatic curve</option><option value="linear">Straight</option><option value="step">Elbow / step</option><option value="basis">Smooth curve</option></select>`) +
         field("Arrowheads", `<select id="edgeArrow"><option value="arrow">End arrow</option><option value="both">Both ends</option><option value="none">No arrow</option></select>`) +

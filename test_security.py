@@ -3,8 +3,9 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 os.environ["SESSION_FILE_DIR"] = tempfile.mkdtemp(prefix="flowchart-test-sessions-")
 
@@ -13,8 +14,10 @@ from app import (
     _bounded_text,
     _clear_and_rotate_session,
     _estimated_cost_microusd,
+    _refund_entitlement,
     _public_attempts,
     _public_rate_limited,
+    _settle_entitlement,
     _validated_graph,
     app,
 )
@@ -23,6 +26,29 @@ from ai_service import update_graph_live
 
 
 class ValidationTests(unittest.TestCase):
+    def test_entitlement_reservations_are_settled_or_refunded_by_id(self):
+        client = Mock()
+        client.rpc.return_value.execute.return_value = None
+
+        _settle_entitlement(client, "settle-id")
+        client.rpc.assert_called_with("settle_ai_entitlement", {"p_reservation_id": "settle-id"})
+
+        _refund_entitlement(client, "refund-id")
+        client.rpc.assert_called_with("refund_ai_entitlement", {"p_reservation_id": "refund-id"})
+
+        call_count = client.rpc.call_count
+        _settle_entitlement(client, None)
+        _refund_entitlement(client, None)
+        self.assertEqual(client.rpc.call_count, call_count)
+
+    def test_schema_keeps_plan_and_refunds_out_of_broad_user_control(self):
+        schema = Path(__file__).with_name("supabase_schema.sql").read_text()
+        self.assertIn("grant update (username, display_name, updated_at)", schema)
+        self.assertNotIn("grant select, insert, update, delete on public.profiles", schema)
+        self.assertIn("refund_ai_entitlement(p_reservation_id uuid)", schema)
+        self.assertIn("version_limit_reached", schema)
+        self.assertIn("designs_workflow_size", schema)
+
     def test_cost_estimate_separates_cached_tokens(self):
         cost = _estimated_cost_microusd({
             "model": "gpt-4.1-nano-2025-04-14",

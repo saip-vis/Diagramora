@@ -1,6 +1,6 @@
-# Flowchart App
+# Diagramora
 
-Voice-to-flowchart MVP with a canonical workflow model, AI reasoning, deterministic normalization/linting, phase-aware layout planning, live Mermaid preview, and vector exports.
+Diagramora is a voice-to-flowchart application with a canonical workflow model, AI reasoning, deterministic normalization and linting, phase-aware layout planning, live Mermaid previews, and vector exports.
 
 ## Part 1 architecture
 
@@ -91,9 +91,13 @@ The workspace also includes a per-account first-use walkthrough, visible trial u
 
 During private testing, each account can save up to three designs. The database enforces this atomically; updates to an existing saved design do not consume another slot.
 
+Free accounts can keep up to 20 manual version snapshots per design. Database constraints also enforce the same 300 KB workflow limit used by Flask, including when a request reaches Supabase's Data API directly.
+
 AI-backed routes are protected by per-operation throttles and a database-backed daily quota. The default is 200 AI calls per account per day; set `DAILY_AI_LIMIT` between 10 and 500 to tune it. The latest `supabase_schema.sql` must be installed for quota enforcement and atomic design/version operations.
 
 Free accounts also receive three completed AI flowchart generations and ten AI-assisted edits. These product entitlements are enforced atomically and are separate from burst-rate protection. Failed generation/edit requests are refunded. Manual editing, saving, reopening, and exporting finalized designs do not consume trial credits. Provider token counts, cached input tokens, and estimated costs are recorded internally for cost monitoring.
+
+Entitlement refunds use opaque, one-time reservation IDs retained by Flask. Profile column privileges prevent authenticated Data API clients from changing their own plan; plan changes are reserved for future trusted billing logic.
 
 Password recovery redirects to `/?reset=1`, reads the short-lived Supabase recovery session from the URL, removes it from browser history, and completes the password update through Flask. Add the local and eventual deployed reset URLs to Supabase Authentication → URL Configuration → Redirect URLs.
 
