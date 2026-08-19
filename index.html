@@ -341,6 +341,11 @@
     justify-content: center;
   }
   #graphContainer svg { max-width: 100%; }
+  #liveGraphSection.final-ready { width:min(1040px,100%); max-width:1040px; margin-inline:auto; }
+  #liveGraphSection.final-ready #liveGraphLabel { text-align:center; }
+  #liveGraphSection.final-ready #liveTitle { margin:0 auto 16px; font-size:1.35rem; font-weight:750; text-align:center; }
+  #liveGraphSection.final-ready #graphContainer { min-height:620px; padding:34px; }
+  #liveGraphSection.final-ready #graphContainer > svg { width:auto !important; max-width:100%; max-height:760px; }
 
   /* ---------- FAQ (click to expand) ---------- */
   .faq-item { border-bottom: 1px solid #dde5ec; text-align: left; }
@@ -431,7 +436,7 @@
     border-bottom: 1px solid #D9E3EC;
   }
   .editor-brand { display: flex; align-items: center; gap: 9px; color: var(--dark-blue); font-size: .95rem; }
-  .editor-brand::before { content: "V→"; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 8px; background: var(--dark-blue); color: #fff; font-size: .62rem; }
+  .editor-brand::before { content: "D→"; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 8px; background: var(--dark-blue); color: #fff; font-size: .62rem; }
   #editorToolbar button, #propertiesPanel button, #aiEditBtn {
     border: 1px solid #AFC0D1;
     background: white;
@@ -477,7 +482,10 @@
   #aiEditStatus { grid-column: 1 / -1; min-height: 0; padding: 6px 16px 10px; background: #F8FAFC; color: #52687D; font-size: .82rem; }
   @media (prefers-reduced-motion: reduce) { .ai-progress-bar { animation-duration:2.4s; } }
   #graphContainer.editor-mode svg { cursor: default; }
-  #graphContainer.editor-mode g.node, #graphContainer.editor-mode .edgePath path, #graphContainer.editor-mode .edgeLabel { cursor: pointer; }
+  #graphContainer.editor-mode g.node,
+  #graphContainer.editor-mode .edgePath path,
+  #graphContainer.editor-mode .edgePaths path.flowchart-link,
+  #graphContainer.editor-mode .edgeLabel { cursor: pointer; }
   #graphContainer.editor-mode g.node:hover > rect,
   #graphContainer.editor-mode g.node:hover > polygon,
   #graphContainer.editor-mode g.node:hover > ellipse,
@@ -487,14 +495,18 @@
     filter: drop-shadow(0 0 4px rgba(11,37,69,.45));
     stroke-width: 3px !important;
   }
-  #graphContainer.editor-mode .edgePath.editor-selected path:not(.edge-hit-target) { filter:drop-shadow(0 0 3px rgba(40,95,143,.45)); }
-  #graphContainer.editor-mode .edge-hit-target { fill:none !important; stroke:transparent !important; stroke-width:18px !important; pointer-events:stroke; }
+  #graphContainer.editor-mode .edgePath.editor-selected path:not(.edge-hit-target),
+  #graphContainer.editor-mode path.flowchart-link.editor-selected { filter:drop-shadow(0 0 3px rgba(40,95,143,.55)); }
+  #graphContainer.editor-mode .edge-hit-target { fill:none !important; stroke:transparent !important; stroke-width:22px !important; pointer-events:stroke; cursor:pointer; }
   #graphContainer.editor-mode .edgeLabel:hover { filter:drop-shadow(0 0 3px rgba(40,95,143,.35)); }
   .property-section-title { margin:2px 0 12px; color:var(--dark-blue); font-size:.78rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
   @media (max-width: 850px) {
     #editorShell.active { grid-template-columns: 1fr; }
     #propertiesPanel { border-left: 0; border-top: 1px solid #D9E3EC; }
     #aiPromptBar { grid-template-columns: 1fr; }
+    .final-review-bar { align-items:stretch; flex-direction:column; }
+    .final-review-bar .action-row { justify-content:stretch; }
+    .final-review-bar .action-btn { flex:1; }
   }
 
 
@@ -511,6 +523,17 @@
   .action-btn.secondary { background:#fff; color:var(--dark-blue); }
   .action-btn:disabled { opacity:.55; cursor:not-allowed; }
   #downloadLink { margin:0; width:auto; }
+  .final-review-bar {
+    display:none; align-items:center; justify-content:space-between; gap:18px;
+    margin:0 0 12px; padding:13px 15px; border:1px solid #C9D6E3;
+    border-radius:var(--radius-md); background:#F8FBFD;
+    box-shadow:0 3px 12px rgba(11,37,69,.05);
+  }
+  .final-review-bar.active { display:flex; }
+  .final-review-copy { min-width:0; color:#52687D; font-size:.8rem; line-height:1.4; text-align:left; }
+  .final-review-copy strong { display:block; margin-bottom:2px; color:var(--dark-blue); font-size:.9rem; }
+  .final-review-bar .action-row { flex:0 0 auto; margin:0; }
+  #liveGraphSection.final-ready #graphContainer { border-color:#B8C9DA; box-shadow:0 8px 28px rgba(11,37,69,.1); }
   #recordAgainBtn { margin-top:14px; }
   .hidden { display:none !important; }
   .modal-backdrop { display:none; position:fixed; inset:0; z-index:1000; background:rgba(7,24,43,.52); align-items:center; justify-content:center; padding:20px; }
@@ -845,12 +868,6 @@
     <div id="spinner"></div>
     <div id="status"></div>
     <div id="cameraStatus" role="status" aria-live="polite">Camera gestures are optional and will be requested when recording starts.</div>
-    <div id="finalActions" class="action-row">
-      <button class="action-btn secondary" id="editFlowchartBtn" type="button">Edit</button>
-      <button class="action-btn" id="exportBtn" type="button">Download</button>
-      <button class="action-btn secondary" id="saveDesignBtn" type="button">Save design</button>
-      <a id="downloadLink" class="hidden" href="#" download="flowchart.pdf">Download your flowchart</a>
-    </div>
     <button class="primary" id="recordAgainBtn">Start Over</button>
 
     <div class="workspace-onboarding">
@@ -871,6 +888,18 @@
       <div id="liveGraphSection">
         <div id="liveGraphLabel">Building live</div>
         <div id="liveTitle"></div>
+        <div id="finalReviewBar" class="final-review-bar" aria-live="polite">
+          <div class="final-review-copy">
+            <strong id="finalReviewHeading">Export-ready preview</strong>
+            <span id="finalReviewDescription">This cleaned diagram is the layout Diagramora uses for your download.</span>
+          </div>
+          <div id="finalActions" class="action-row">
+            <button class="action-btn secondary" id="editFlowchartBtn" type="button">Edit</button>
+            <button class="action-btn" id="exportBtn" type="button">Download</button>
+            <button class="action-btn secondary" id="saveDesignBtn" type="button">Save design</button>
+            <a id="downloadLink" class="hidden" href="#" download="flowchart.pdf">Download your flowchart</a>
+          </div>
+        </div>
         <div id="graphContainer"></div>
 
         <div id="editorShell">
@@ -1339,6 +1368,9 @@
     const aiEditProgress = document.getElementById("aiEditProgress");
     const aiProgressLabel = document.getElementById("aiProgressLabel");
     const aiProgressTime = document.getElementById("aiProgressTime");
+    const finalReviewBar = document.getElementById("finalReviewBar");
+    const finalReviewHeading = document.getElementById("finalReviewHeading");
+    const finalReviewDescription = document.getElementById("finalReviewDescription");
     const finalActions = document.getElementById("finalActions");
     const editFlowchartBtn = document.getElementById("editFlowchartBtn");
     const exportBtn = document.getElementById("exportBtn");
@@ -1370,6 +1402,21 @@
     let savedTranscript = "";
     let accountRequestEpoch = 0;
     const accountRequestControllers = new Set();
+
+    function setFinalReviewVisible(visible, options = {}) {
+      const recovered = Boolean(options.recovered);
+      finalReviewBar.classList.toggle("active", visible);
+      finalActions.classList.toggle("active", visible);
+      liveGraphSection.classList.toggle("final-ready", visible);
+      if (!visible) return;
+      finalReviewHeading.textContent = recovered ? "Live draft recovered" : "Export-ready preview";
+      finalReviewDescription.textContent = recovered
+        ? "Final cleanup was unavailable, but you can still edit, save, or download this draft."
+        : "This cleaned diagram is the layout Diagramora uses for your download.";
+      if (options.scroll) {
+        requestAnimationFrame(() => finalReviewBar.scrollIntoView({behavior:"smooth", block:"nearest"}));
+      }
+    }
 
     function invalidateAccountRequests() {
       accountRequestEpoch += 1;
@@ -1657,42 +1704,79 @@
       });
     }
 
-    async function exportVisibleGraphToPdf(title, options = {}) {
-      const svg = graphContainer.querySelector("svg");
-      if (!svg || !window.jspdf || !window.jspdf.jsPDF) {
-        throw new Error("The proportional PDF exporter is not ready");
-      }
+    function inlineSvgPresentation(sourceSvg, clonedSvg) {
+      const sourceElements = [sourceSvg, ...sourceSvg.querySelectorAll("*")];
+      const clonedElements = [clonedSvg, ...clonedSvg.querySelectorAll("*")];
+      const properties = {
+        fill: "fill", stroke: "stroke", strokeWidth: "stroke-width",
+        strokeDasharray: "stroke-dasharray", strokeLinecap: "stroke-linecap",
+        strokeLinejoin: "stroke-linejoin", fillOpacity: "fill-opacity",
+        strokeOpacity: "stroke-opacity", opacity: "opacity",
+      };
+      sourceElements.forEach((sourceElement, index) => {
+        const clonedElement = clonedElements[index];
+        if (!clonedElement) return;
+        const computed = window.getComputedStyle(sourceElement);
+        Object.entries(properties).forEach(([property, attribute]) => {
+          const value = computed[property];
+          if (value && value !== "normal") clonedElement.setAttribute(attribute, value);
+        });
+        if (sourceElement.matches("text, tspan")) {
+          clonedElement.setAttribute("font-family", "Helvetica, Arial, sans-serif");
+          if (computed.fontSize) clonedElement.setAttribute("font-size", computed.fontSize);
+          if (computed.fontWeight) clonedElement.setAttribute("font-weight", computed.fontWeight);
+        }
+      });
+    }
 
-      // Wait for browser fonts and Mermaid's final layout before cloning. This
-      // avoids exporting while label metrics are still being resolved.
-      if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready;
-      }
+    function normalizeExportClusterLabels(sourceSvg, clonedSvg) {
+      const sourceLabels = sourceSvg.querySelectorAll("g.cluster-label text, g.clusterLabel text");
+      const clonedLabels = clonedSvg.querySelectorAll("g.cluster-label text, g.clusterLabel text");
+      sourceLabels.forEach((sourceLabel, index) => {
+        const clonedLabel = clonedLabels[index];
+        if (!clonedLabel) return;
+        const pieces = [...sourceLabel.querySelectorAll("tspan")]
+          .map(part => String(part.textContent || "").trim()).filter(Boolean);
+        const label = (pieces.length ? pieces.join(" ") : sourceLabel.textContent || "")
+          .replace(/\s+/g, " ").trim();
+        if (!label) return;
+        try {
+          const bounds = sourceLabel.getBBox();
+          clonedLabel.replaceChildren();
+          clonedLabel.setAttribute("x", String(bounds.x + bounds.width / 2));
+          clonedLabel.setAttribute("y", String(bounds.y + bounds.height * 0.8));
+          clonedLabel.setAttribute("text-anchor", "middle");
+          clonedLabel.setAttribute("font-family", "Helvetica, Arial, sans-serif");
+          clonedLabel.textContent = label;
+        } catch (_) {
+          clonedLabel.textContent = label;
+        }
+      });
+    }
+
+    async function prepareVisibleGraphForExport() {
+      const sourceSvg = graphContainer.querySelector("svg");
+      if (!sourceSvg) throw new Error("No flowchart is available to export.");
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-      // Clone the exact finalized Mermaid SVG shown on screen. Exporting this
-      // same vector object guarantees that node, text, and edge proportions are
-      // preserved instead of asking a second layout engine to redraw the graph.
-      const clone = svg.cloneNode(true);
+      const clone = sourceSvg.cloneNode(true);
       clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
       clone.removeAttribute("width");
       clone.removeAttribute("height");
-
-      // Mermaid can still emit HTML-backed labels in some version/configuration
-      // combinations. Convert them in the export clone to portable native SVG
-      // text so svg2pdf does not omit labels or abort the download.
+      inlineSvgPresentation(sourceSvg, clone);
+      normalizeExportClusterLabels(sourceSvg, clone);
       replaceForeignObjectsWithSvgText(clone);
+      return clone;
+    }
 
-      // Ensure SVG text has an explicit portable font instead of depending on
-      // page-level CSS that is unavailable to the PDF renderer.
-      clone.querySelectorAll("text, tspan").forEach(element => {
-        element.setAttribute("font-family", "Arial, Helvetica, sans-serif");
-        const computed = window.getComputedStyle(element);
-        if (computed.fontSize) element.setAttribute("font-size", computed.fontSize);
-        if (computed.fontWeight) element.setAttribute("font-weight", computed.fontWeight);
-        if (computed.fill && computed.fill !== "none") element.setAttribute("fill", computed.fill);
-      });
+    async function exportVisibleGraphToPdf(title, options = {}) {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        throw new Error("The proportional PDF exporter is not ready");
+      }
+      // A detached SVG clone loses Mermaid's page-level CSS. Inline styles from
+      // the visible source first so PDF, SVG, and PNG preserve the same design.
+      const clone = await prepareVisibleGraphForExport();
 
       const viewBox = (clone.getAttribute("viewBox") || "0 0 1000 1000")
         .trim().split(/\s+/).map(Number);
@@ -1733,12 +1817,7 @@
     }
 
     async function exportVisibleGraphToSvg() {
-      const svg = graphContainer.querySelector("svg");
-      if (!svg) throw new Error("No flowchart is available to export.");
-      if (document.fonts && document.fonts.ready) await document.fonts.ready;
-      const clone = svg.cloneNode(true);
-      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      clone.querySelectorAll("text, tspan").forEach(el => el.setAttribute("font-family", "Arial, Helvetica, sans-serif"));
+      const clone = await prepareVisibleGraphForExport();
       return new Blob([new XMLSerializer().serializeToString(clone)], {type:"image/svg+xml;charset=utf-8"});
     }
 
@@ -1807,10 +1886,17 @@
       });
     }
 
+    function renderableEdgePaths() {
+      const candidates = graphContainer.querySelectorAll(
+        ".edgePath path:not(.edge-hit-target), .edgePaths path.flowchart-link:not(.edge-hit-target), path.flowchart-link:not(.edge-hit-target)"
+      );
+      return [...new Set(candidates)];
+    }
+
     function applyEditorEdgeShapes() {
-      const paths = [...graphContainer.querySelectorAll(".edgePath path:not(.edge-hit-target)")];
+      const paths = renderableEdgePaths();
       paths.forEach((path, index) => {
-        const edge = (currentGraph.edges || [])[index];
+        const edge = identifyEdgeFromPath(path, index);
         if (!edge) return;
         const style = edge.metadata && edge.metadata.editor_style ? edge.metadata.editor_style : {};
         if (style.arrow === "both") {
@@ -1849,7 +1935,10 @@
     }
     function identifyEdgeFromPath(path, fallbackIndex = -1) {
       const parent = path.closest(".edgePath") || path.parentElement;
-      const id = (path.id || "") + " " + (parent && parent.id || "");
+      const id = [
+        path.id || "", path.getAttribute("class") || "",
+        parent && parent.id || "", parent && parent.getAttribute("class") || "",
+      ].join(" ");
       const identified = (currentGraph.edges || []).find((edge) =>
         id.includes(nodeSafeId(edge.from)) && id.includes(nodeSafeId(edge.to))
       );
@@ -1858,46 +1947,52 @@
     function attachEditorInteractions() {
       graphContainer.classList.add("editor-mode");
       graphContainer.querySelectorAll("g.node").forEach(group => {
-        group.addEventListener("click", event => {
+        group.onclick = event => {
           event.stopPropagation();
           const node = identifyNodeFromGroup(group);
           if (!node) return;
           selectedEditorItem = { kind: "node", item: node };
           selectSvgElement(group);
           renderNodeProperties(node);
-        });
+        };
       });
-      const edgeGroups = [...graphContainer.querySelectorAll(".edgePath")];
+      graphContainer.querySelectorAll(".edge-hit-target").forEach(target => target.remove());
+      const edgePaths = renderableEdgePaths();
       const edgeLabels = [...graphContainer.querySelectorAll(".edgeLabel")];
       let edgeLabelIndex = 0;
-      edgeGroups.forEach((group, index) => {
-        const path = group.querySelector("path:not(.edge-hit-target)");
-        if (!path) return;
+      edgePaths.forEach((path, index) => {
+        const group = path.closest(".edgePath");
+        const selectableElement = group || path;
         const edge = identifyEdgeFromPath(path, index);
         if (!edge) return;
         const selectEdge = event => {
           event.stopPropagation();
           selectedEditorItem = { kind: "edge", item: edge };
-          selectSvgElement(group);
+          selectSvgElement(selectableElement);
           renderEdgeProperties(edge);
         };
         path.style.pointerEvents = "stroke";
-        path.addEventListener("click", selectEdge);
+        path.onclick = selectEdge;
         const hitTarget = path.cloneNode(false);
         hitTarget.removeAttribute("id");
         hitTarget.removeAttribute("class");
         hitTarget.removeAttribute("marker-start");
         hitTarget.removeAttribute("marker-end");
         hitTarget.setAttribute("class", "edge-hit-target");
-        hitTarget.setAttribute("aria-hidden", "true");
-        hitTarget.addEventListener("click", selectEdge);
-        group.appendChild(hitTarget);
+        hitTarget.setAttribute("role", "button");
+        hitTarget.setAttribute("tabindex", "0");
+        hitTarget.setAttribute("aria-label", `Edit connection from ${edge.from} to ${edge.to}`);
+        hitTarget.onclick = selectEdge;
+        hitTarget.onkeydown = event => {
+          if (event.key === "Enter" || event.key === " ") selectEdge(event);
+        };
+        path.parentElement.appendChild(hitTarget);
         if (edge.label && edgeLabels[edgeLabelIndex]) {
-          edgeLabels[edgeLabelIndex].addEventListener("click", selectEdge);
+          edgeLabels[edgeLabelIndex].onclick = selectEdge;
           edgeLabelIndex += 1;
         }
         if (selectedEditorItem?.kind === "edge" && selectedEditorItem.item === edge) {
-          selectSvgElement(group);
+          selectSvgElement(selectableElement);
         }
       });
       graphContainer.onclick = () => { selectedEditorItem = null; selectSvgElement(null); showEmptyProperties(); };
@@ -1908,10 +2003,29 @@
       clearTimeout(editorRenderTimer);
       editorRenderTimer = setTimeout(() => renderLiveGraph(currentGraph), delay);
     }
-    async function updateAndRender(mutator, immediate = false) {
+    async function updateAndRender(mutator, immediate = false, edgeOnlyIndex = null) {
       const now = Date.now();
       if (now - lastUndoAt > 450) { pushUndo(); lastUndoAt = now; }
+      const guardedSnapshot = edgeOnlyIndex === null ? null : graphSnapshot();
+      const guardedEdges = edgeOnlyIndex === null
+        ? null
+        : (currentGraph.edges || []).map(edge => JSON.stringify(edge));
       mutator();
+      if (edgeOnlyIndex !== null) {
+        const edges = currentGraph.edges || [];
+        const originalGraph = JSON.parse(guardedSnapshot);
+        const sameTopology = edges.length === originalGraph.edges.length && edges.every((edge, index) =>
+          String(edge.from) === String(originalGraph.edges[index].from) &&
+          String(edge.to) === String(originalGraph.edges[index].to)
+        );
+        const otherEdgesUnchanged = edges.every((edge, index) =>
+          index === edgeOnlyIndex || JSON.stringify(edge) === guardedEdges[index]
+        );
+        if (!sameTopology || !otherEdgesUnchanged) {
+          currentGraph = originalGraph;
+          throw new Error("Connection styling must not change the flowchart structure.");
+        }
+      }
       if (immediate) await renderLiveGraph(currentGraph);
       else scheduleEditorRender();
       scheduleAutosave();
@@ -1973,6 +2087,7 @@
     }
     function renderEdgeProperties(edge) {
       const style = ensureMetadata(edge);
+      const edgeIndex = (currentGraph.edges || []).indexOf(edge);
       propertyContent.className = "";
       propertyContent.innerHTML =
         `<div class="property-section-title">Connection style</div>` +
@@ -1986,15 +2101,20 @@
       document.getElementById("edgeArrow").value = style.arrow || "arrow";
       document.getElementById("edgeCurve").value = style.curve || "default";
       const commit = async () => {
-        await updateAndRender(() => {
-          edge.label = document.getElementById("edgeLabel").value.trim();
-          const st = ensureMetadata(edge);
-          st.stroke = document.getElementById("edgeColor").value;
-          st.strokeWidth = Number(document.getElementById("edgeWidth").value);
-          st.pattern = document.getElementById("edgePattern").value;
-          st.curve = document.getElementById("edgeCurve").value;
-          st.arrow = document.getElementById("edgeArrow").value;
-        });
+        try {
+          await updateAndRender(() => {
+            edge.label = document.getElementById("edgeLabel").value.trim();
+            const st = ensureMetadata(edge);
+            st.stroke = document.getElementById("edgeColor").value;
+            st.strokeWidth = Number(document.getElementById("edgeWidth").value);
+            st.pattern = document.getElementById("edgePattern").value;
+            st.curve = document.getElementById("edgeCurve").value;
+            st.arrow = document.getElementById("edgeArrow").value;
+          }, false, edgeIndex);
+        } catch (error) {
+          notify(error.message, "error");
+          await renderLiveGraph(currentGraph);
+        }
       };
       ["edgeLabel","edgeColor","edgeWidth","edgePattern","edgeCurve","edgeArrow"].forEach(id => document.getElementById(id).addEventListener("input", commit));
       document.getElementById("deleteEdgeBtn").onclick = async () => {
@@ -2620,7 +2740,7 @@
     document.getElementById("refreshDesignsBtn").onclick = loadDesigns;
     document.getElementById("newDesignBtn").onclick = () => {
       currentDesignId = null; currentGraph = {nodes:[],edges:[]}; currentTitle = "Untitled Flowchart"; savedTranscript = "";
-      liveTitle.textContent = ""; liveGraphSection.classList.remove("active"); finalActions.classList.remove("active");
+      liveTitle.textContent = ""; liveGraphSection.classList.remove("active"); setFinalReviewVisible(false);
       document.getElementById("page-home").classList.remove("workspace-active");
       showPage("home"); status.textContent = "Start talking to create a new design.";
     };
@@ -2663,7 +2783,7 @@
       if (!response.ok) { notify(data.error || "Could not open design", "error"); return; }
       currentDesignId = data.design.id; currentGraph = data.design.graph; currentTitle = data.design.title || "Flowchart"; savedTranscript = data.design.transcript || "";
       document.getElementById("page-home").classList.add("workspace-active");
-      liveTitle.textContent = currentTitle; liveGraphSection.classList.add("active"); finalActions.classList.add("active");
+      liveTitle.textContent = currentTitle; liveGraphSection.classList.add("active"); setFinalReviewVisible(true);
       recordAgainBtn.style.display = "inline-block"; document.getElementById("liveGraphLabel").textContent = "Saved design";
       await renderLiveGraph(currentGraph); showPage("home"); status.textContent = "Saved design loaded."; autosaveIndicator.textContent = "Saved";
     }
@@ -3107,7 +3227,7 @@
       recordBtn.textContent = "Start Talking";
       recordAgainBtn.style.display = "none";
       downloadLink.style.display = "none";
-      finalActions.classList.remove("active");
+      setFinalReviewVisible(false);
       spinner.style.display = "none";
       status.textContent = "";
       cameraStatus.className = "";
@@ -3152,7 +3272,7 @@
         recordBtn.disabled = true;
         recordBtn.style.display = "none";
         status.textContent = "";
-        spinner.style.display = "block"; // spinner appears exactly where the download button will land
+        spinner.style.display = "block";
 
         // Give the browser a moment to deliver the final recognition event, then
         // wait until every queued live update has completed.
@@ -3188,14 +3308,21 @@
           await renderLiveGraph(currentGraph);
           document.getElementById("liveGraphLabel").textContent = "Final flowchart";
           savedTranscript = finalTranscript;
-          finalActions.classList.add("active");
+          setFinalReviewVisible(true, {scroll:true});
 
           spinner.style.display = "none";
           status.textContent = "Done! Edit the live chart or choose Download.";
           refreshWorkspaceUsage();
         } catch (err) {
           spinner.style.display = "none";
-          status.textContent = "Something went wrong: " + err.message;
+          savedTranscript = finalTranscript;
+          if (Array.isArray(currentGraph.nodes) && currentGraph.nodes.length) {
+            document.getElementById("liveGraphLabel").textContent = "Live draft";
+            setFinalReviewVisible(true, {recovered:true, scroll:true});
+            status.textContent = "Final cleanup was unavailable: " + err.message;
+          } else {
+            status.textContent = "Something went wrong: " + err.message;
+          }
         }
 
         recordAgainBtn.style.display = "inline-block";
@@ -3209,7 +3336,7 @@
       }
 
       downloadLink.style.display = "none";
-      finalActions.classList.remove("active");
+      setFinalReviewVisible(false);
       spinner.style.display = "none";
 
       let gesturesAvailable = false;

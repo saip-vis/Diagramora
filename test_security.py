@@ -49,6 +49,14 @@ class ValidationTests(unittest.TestCase):
         self.assertIn("version_limit_reached", schema)
         self.assertIn("designs_workflow_size", schema)
 
+    def test_connection_style_editor_guards_edge_topology(self):
+        html = Path(__file__).with_name("index.html").read_text()
+        self.assertIn("identifyEdgeFromPath(path, index)", html)
+        self.assertIn("const sameTopology =", html)
+        self.assertIn("const otherEdgesUnchanged =", html)
+        self.assertIn("}, false, edgeIndex);", html)
+        self.assertIn("Connection styling must not change the flowchart structure.", html)
+
     def test_cost_estimate_separates_cached_tokens(self):
         cost = _estimated_cost_microusd({
             "model": "gpt-4.1-nano-2025-04-14",

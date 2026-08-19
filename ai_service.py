@@ -269,10 +269,14 @@ Before producing JSON, reason privately in this order:
 3. Build the local steps and decisions inside each phase.
 4. Connect phases only at legitimate handoff points.
 5. Validate all branches, merges, and retry loops.
+6. Compare the finished node list against every explicit action and condition in the transcript.
 
 MANDATORY RULES:
 - Preserve chronological and causal order from the transcript.
 - Include every important explicit step. Do not silently collapse distinct steps.
+- Treat conditional language such as "if", "otherwise", "whether", "approved", "complete", "valid", or "successful" as a decision when it controls what happens next. Represent the check itself as a decision diamond rather than placing branch labels on an ordinary process node.
+- Preserve explicit terminal actions that occur before End, including phrases such as "mark complete", "close the request", "notify the customer", or "record the result". End is structural and never replaces a stated business action.
+- Before returning JSON, account for every sentence or clause in the full transcript. Each explicit action must map to a node, and each explicit condition must map to a decision plus correctly labeled outgoing edges.
 - Merge only true semantic duplicates.
 - Classify every node as start, process, decision, input_output, or end.
 - Add "phase" and integer "phase_order" to every non-Start/End node.
